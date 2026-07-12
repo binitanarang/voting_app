@@ -1,19 +1,21 @@
-/* Seeds a competition into its own data directory. The directory name is
-   also the competition's URL path: data/ai-day-3 → http://host:3000/ai-day-3
+/* Seeds a competition from data/seed/<competition>.json into
+   data/<competition>/ — the seed file's name IS the competition's directory
+   and URL path (data/seed/ai-day-3.json → data/ai-day-3 → /ai-day-3).
 
-   Interactive (just run `npm run seed`): pick a seed config from seed/*.json,
-   then pick an existing competition directory to wipe-and-reseed (confirmed by
-   retyping its name; a safety export is taken first) or name a new one.
+   Interactive (just run `npm run seed`): pick a seed file; if that
+   competition already exists you confirm the wipe by retyping its name, and
+   a safety export is taken first.
 
    Scriptable flags:
-     --config seed/uspb-hackathon.json   which seed file to load
-     --dir uspb-hackathon                target data/<name>
-     --reset                             allow wiping an existing database
-*/
+     --config data/seed/uspb-hackathon.json   which seed file to load
+     --reset                                  allow wiping an existing database
+
+   PINs: each judge/admin may set a "pin"; when omitted, the PIN defaults to
+   the person's employee ID. */
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
-import { ROOT, DIR_NAME_RE, competitionDir, listCompetitionDirs } from './paths.js';
+import { ROOT, SEED_DIR, DIR_NAME_RE, competitionDir } from './paths.js';
 import { openCompetition } from './db.js';
 import { exportSnapshot } from './export.js';
 import { hashPin } from './auth.js';
@@ -29,61 +31,45 @@ const rl = interactive ? readline.createInterface({ input: process.stdin, output
 
 const die = (msg) => { console.error(msg); process.exit(1); };
 
-/* ---------- 1. Which seed config ---------- */
+/* ---------- 1. Which seed file (its name = the competition directory) ---------- */
 
 let configPath = flag('config');
 if (configPath === true) die('--config needs a file path');
 if (!configPath) {
-  const seedDir = path.join(ROOT, 'seed');
-  const options = fs.readdirSync(seedDir).filter((f) => f.endsWith('.json')).sort();
-  if (!options.length) die('No .json files in seed/.');
+  if (!fs.existsSync(SEED_DIR)) die(`No seed directory yet — create ${path.relative(ROOT, SEED_DIR)}/<competition>.json first.`);
+  const options = fs.readdirSync(SEED_DIR).filter((f) => f.endsWith('.json')).sort();
+  if (!options.length) die(`No .json files in ${path.relative(ROOT, SEED_DIR)}/.`);
   if (options.length === 1 || !rl) {
-    configPath = path.join('seed', options[0]);
+    configPath = path.join(SEED_DIR, options[0]);
   } else {
-    console.log('Seed configs:');
-    options.forEach((f, i) => console.log(`  [${i + 1}] seed/${f}`));
-    const pick = await rl.question(`Which config? [1-${options.length}, default 1] `);
+    console.log('Competitions to seed (file name = directory = URL path):');
+    options.forEach((f, i) => {
+      const dir = path.basename(f, '.json');
+      const exists = fs.existsSync(path.join(competitionDir(dir), 'voting.db'));
+      console.log(`  [${i + 1}] ${f} → /${dir}${exists ? '  (EXISTS — reseeding WIPES its scores; a safety export is taken first)' : ''}`);
+    });
+    const pick = await rl.question(`Which one? [1-${options.length}, default 1] `);
     const n = pick.trim() === '' ? 1 : Number(pick);
     if (!Number.isInteger(n) || n < 1 || n > options.length) die('Invalid choice.');
-    configPath = path.join('seed', options[n - 1]);
+    configPath = path.join(SEED_DIR, options[n - 1]);
   }
 }
 const configAbs = path.isAbsolute(configPath) ? configPath : path.join(ROOT, configPath);
 if (!fs.existsSync(configAbs)) die(`Seed config not found: ${configPath}`);
-const config = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
-const competitionName = config.name ?? path.basename(configAbs, '.json');
-console.log(`Competition: "${competitionName}" (${path.relative(ROOT, configAbs)})`);
 
-/* ---------- 2. Which data directory (= URL path) ---------- */
-
-let dirName = flag('dir');
-if (dirName === true) die('--dir needs a directory name');
-const existing = listCompetitionDirs();
-
-if (!dirName) {
-  if (!rl) die('Non-interactive run: pass --dir <name> (and --reset to wipe an existing one).');
-  console.log('\nWhere should this competition live? (directory name = URL path)');
-  existing.forEach((d, i) =>
-    console.log(`  [${i + 1}] data/${d} → /${d}  (EXISTS — reseeding WIPES its scores; a safety export is taken first)`));
-  console.log(`  [${existing.length + 1}] Create a new competition directory`);
-  const pick = await rl.question(`Choose [1-${existing.length + 1}] `);
-  const n = Number(pick);
-  if (!Number.isInteger(n) || n < 1 || n > existing.length + 1) die('Invalid choice.');
-  if (n <= existing.length) {
-    dirName = existing[n - 1];
-  } else {
-    dirName = (await rl.question('New directory name (lowercase, e.g. uspb-hackathon): ')).trim();
-  }
-}
+const dirName = path.basename(configAbs, '.json');
 if (!DIR_NAME_RE.test(dirName)) {
-  die(`"${dirName}" is not a valid name — it becomes the URL path, so use lowercase letters, digits, and dashes (e.g. ai-day-3).`);
+  die(`Seed file name "${dirName}.json" is not a valid competition name — it becomes the directory and URL path, so use lowercase letters, digits, and dashes (e.g. ai-day-3.json).`);
 }
 
+const config = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
+const competitionName = config.name ?? dirName;
 const dataDir = competitionDir(dirName);
 const dbPath = path.join(dataDir, 'voting.db');
 const dirLabel = path.relative(ROOT, dataDir);
+console.log(`Competition: "${competitionName}" → ${dirLabel} → /${dirName}`);
 
-/* ---------- 3. Wipe confirmation + safety export ---------- */
+/* ---------- 2. Wipe confirmation + safety export ---------- */
 
 if (fs.existsSync(dbPath)) {
   if (!reset && !rl) {
@@ -91,7 +77,7 @@ if (fs.existsSync(dbPath)) {
   }
   if (!reset) {
     const typed = await rl.question(
-      `${dirLabel} already has a database. Wiping deletes ALL its scores.\nType the directory name ("${dirName}") to confirm: `
+      `${dirLabel} already has a database. Wiping deletes ALL its scores.\nType the competition name ("${dirName}") to confirm: `
     );
     if (typed.trim() !== dirName) die('Confirmation did not match — nothing was changed.');
   }
@@ -111,7 +97,7 @@ if (fs.existsSync(dbPath)) {
 
 rl?.close();
 
-/* ---------- 4. Validate config ---------- */
+/* ---------- 3. Validate config ---------- */
 
 const { criteria, categories, judges, admins = [] } = config;
 if (!criteria?.length || !categories?.length || !judges?.length) {
@@ -124,10 +110,15 @@ for (const cat of categories) {
   const sum = cat.weights.reduce((a, b) => a + b, 0);
   if (Math.abs(sum - 100) > 0.01) die(`Category "${cat.name}": weights sum to ${sum}, expected 100.`);
 }
-const pinProblems = [...judges, ...admins].filter((j) => !/^\d{4}$/.test(String(j.pin)));
-if (pinProblems.length) die(`PINs must be exactly 4 digits: ${pinProblems.map((j) => j.employeeId).join(', ')}`);
+const people = [...judges, ...admins];
+const badIds = people.filter((p) => !String(p.employeeId ?? '').trim());
+if (badIds.length) die('Every judge/admin needs an employeeId.');
+/* PIN defaults to the employee ID when not set. */
+const pinFor = (p) => String(p.pin ?? p.employeeId).trim();
+const badPins = people.filter((p) => !pinFor(p) || pinFor(p).length > 64);
+if (badPins.length) die(`Invalid PINs for: ${badPins.map((p) => p.employeeId).join(', ')}`);
 
-/* ---------- 5. Load ---------- */
+/* ---------- 4. Load ---------- */
 
 const ctx = openCompetition(dirName);
 const { db } = ctx;
@@ -167,10 +158,10 @@ const insertJudge = db.prepare(
 for (const j of judges) {
   const panelId = panelIdByName[j.panel];
   if (!panelId) die(`Judge ${j.employeeId}: unknown panel "${j.panel}".`);
-  insertJudge.run(j.employeeId, j.name, hashPin(String(j.pin)), panelId, 'judge');
+  insertJudge.run(j.employeeId, j.name, hashPin(pinFor(j)), panelId, 'judge');
 }
 for (const a of admins) {
-  insertJudge.run(a.employeeId, a.name, hashPin(String(a.pin)), null, 'admin');
+  insertJudge.run(a.employeeId, a.name, hashPin(pinFor(a)), null, 'admin');
 }
 
 console.log(`\nSeeded "${competitionName}" into ${dirLabel}:`, JSON.stringify({

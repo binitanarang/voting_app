@@ -28,11 +28,11 @@ export default function Login() {
 
   return (
     <main className="page page--narrow">
-      <p className="label">Judge sign-in</p>
+      <p className="label">Sign-in</p>
       <h1 className="page-title">
         <CompetitionName />
       </h1>
-      <p className="lede">Enter your employee ID and the 4-digit PIN you were assigned.</p>
+      <p className="lede">Enter your employee ID and PIN.</p>
 
       <form onSubmit={submit} style={{ marginTop: 'var(--s-6)' }}>
         <div className="field">
@@ -53,17 +53,16 @@ export default function Login() {
             id="pin"
             className="input input--pin"
             type="password"
-            inputMode="numeric"
-            pattern="\d{4}"
-            maxLength={4}
+            maxLength={64}
+            autoCapitalize="characters"
             autoComplete="current-password"
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => setPin(e.target.value)}
             required
           />
         </div>
         {error && <p className="error-text" role="alert">{error}</p>}
-        <button className="btn" disabled={busy || pin.length !== 4 || !employeeId.trim()} style={{ marginTop: 'var(--s-4)', width: '100%' }}>
+        <button className="btn" disabled={busy || !pin.trim() || !employeeId.trim()} style={{ marginTop: 'var(--s-4)', width: '100%' }}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>

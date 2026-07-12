@@ -19,41 +19,48 @@ http://host:3000/                →  landing page listing competitions
   (`client/src/styles/mara.css`) — no CSS framework.
 - **Backend:** Express + SQLite (Node's built-in `node:sqlite`, so there are no
   native-module builds). One process serves every competition and the SPA.
-- **Auth:** employee ID + 4-digit PIN (scrypt-hashed), 7-day session cookie
-  scoped to the competition's path, failed attempts rate-limited (5 per
-  15 minutes per employee ID). Sessions, judges, and locks are fully isolated
-  per competition.
+- **Auth:** employee ID + PIN (scrypt-hashed; by default a person's PIN is
+  their employee ID — set a `pin` per person in the seed file to override),
+  7-day session cookie scoped to the competition's path, failed attempts
+  rate-limited (5 per 15 minutes per employee ID). Sessions, judges, and locks
+  are fully isolated per competition.
 
 ## Quick start
 
 ```bash
 npm install
-npm run seed        # interactive: pick a seed config and a directory name
+npm run seed        # interactive: pick a competition from data/seed/*.json
 npm run dev         # API on :3000, Vite dev server on :5173 (proxies the API)
 ```
 
-Then open `http://localhost:5173/<directory-name>/`.
+Then open `http://localhost:5173/<competition>/` (e.g. `/ai-day-3/`).
 
 Tests (score math — weighting, STANDARDIZE-style z-scores, sd=0 fallback,
 tiebreaks): `npm test`
 
 ## Setting up a competition
 
-Copy `seed/competition.json` to `seed/<competition>.json` and edit: the
-competition `name` (shown in the app header and login page), category and
-criterion names (any number of categories, each with its own judging panel),
-per-category weights (percentages summing to 100), entries, and judges with
-real employee IDs and PINs. Then run `npm run seed` — it asks which config to
-load and which directory to use: reuse an existing one (wipe requires retyping
-its name, and a safety export is taken first) or create a new one. The
-directory name becomes the URL path, so it must be lowercase letters, digits,
-and dashes (e.g. `ai-day-3`).
+Seed files live in `data/seed/`, one per competition, and **the file name is
+the competition**: `data/seed/ai-day-3.json` seeds `data/ai-day-3/`, served at
+`/ai-day-3`. File names become URL paths, so use lowercase letters, digits,
+and dashes.
+
+1. Copy an existing file, e.g.
+   `cp data/seed/ai-day-3.json data/seed/uspb-hackathon.json`
+2. Edit it: the competition `name` (shown in the app header and login page),
+   category and criterion names (any number of categories, each with its own
+   judging panel), per-category weights (percentages summing to 100), entries,
+   and judges with real employee IDs. **Each person's login PIN is their
+   employee ID** unless you add a `"pin"` field for them.
+3. Run `npm run seed` and pick the file. If that competition already has a
+   database, you confirm the wipe by retyping its name, and a safety export
+   (CSV + DB snapshot) is written to its `exports/` first.
 
 Non-interactive form:
 
 ```bash
-npm run seed -- --config seed/uspb-hackathon.json --dir uspb-hackathon          # new
-npm run seed -- --config seed/uspb-hackathon.json --dir uspb-hackathon --reset  # wipe + reseed
+npm run seed -- --config data/seed/uspb-hackathon.json           # new competition
+npm run seed -- --config data/seed/uspb-hackathon.json --reset   # wipe + reseed
 ```
 
 New competitions are served immediately — no restart needed. (Reseeding an
@@ -121,8 +128,9 @@ The app is a plain Node process with SQLite files, so migration is a copy:
 
 ## Rounds (semi-finals → finals)
 
-Rounds are sequential, so treat each as its own seeding of the same directory:
-lock voting (auto-archives results + a DB snapshot), then reseed with the
-finalist entries — the pre-reseed safety export preserves the previous round
-again. Or give each round its own directory/URL (`--dir ai-day-3-finals`) to
-keep every round live side by side.
+Rounds are sequential, so treat each as its own seeding of the same
+competition: lock voting (auto-archives results + a DB snapshot), then reseed
+with the finalist entries — the pre-reseed safety export preserves the
+previous round again. Or give each round its own seed file and URL
+(`data/seed/ai-day-3-finals.json` → `/ai-day-3-finals`) to keep every round
+live side by side.

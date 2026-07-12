@@ -71,8 +71,8 @@ adminRouter.get('/judges', (req, res) => {
 adminRouter.post('/judges', (req, res) => {
   const { db } = req.ctx;
   const { employeeId, name, pin, panelId = null, role = 'judge' } = req.body ?? {};
-  if (!employeeId?.trim() || !name?.trim() || !/^\d{4}$/.test(String(pin))) {
-    return res.status(400).json({ error: 'employeeId, name, and 4-digit pin required' });
+  if (!employeeId?.trim() || !name?.trim() || !String(pin ?? '').trim() || String(pin).length > 64) {
+    return res.status(400).json({ error: 'employeeId, name, and pin required' });
   }
   if (!['judge', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   if (panelId != null && !db.prepare('SELECT id FROM panels WHERE id = ?').get(Number(panelId))) {
@@ -107,7 +107,7 @@ adminRouter.put('/judges/:id', (req, res) => {
 adminRouter.post('/judges/:id/pin', (req, res) => {
   const { db } = req.ctx;
   const { pin } = req.body ?? {};
-  if (!/^\d{4}$/.test(String(pin))) return res.status(400).json({ error: '4-digit pin required' });
+  if (!String(pin ?? '').trim() || String(pin).length > 64) return res.status(400).json({ error: 'pin required' });
   const r = db.prepare('UPDATE judges SET pin_hash = ? WHERE id = ?').run(hashPin(String(pin)), Number(req.params.id));
   if (!r.changes) return res.status(404).json({ error: 'Judge not found' });
   res.json({ ok: true });

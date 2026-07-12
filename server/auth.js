@@ -92,8 +92,8 @@ export function handleLogin(req, res) {
   const ctx = req.ctx;
   const employeeId = String(req.body?.employeeId ?? '').trim();
   const pin = String(req.body?.pin ?? '').trim();
-  if (!employeeId || !/^\d{4}$/.test(pin)) {
-    return res.status(400).json({ error: 'Employee ID and 4-digit PIN required' });
+  if (!employeeId || !pin || pin.length > 64) {
+    return res.status(400).json({ error: 'Employee ID and PIN required' });
   }
 
   const cutoff = Date.now() - ATTEMPT_WINDOW_MS;

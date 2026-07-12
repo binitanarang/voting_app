@@ -129,8 +129,8 @@ html {
 .input:focus { outline: 2px solid var(--c-ochre); outline-offset: -1px; }
 .input--pin {
   font-family: var(--f-mono);
-  font-size: 24px;
-  letter-spacing: 0.5em;
+  font-size: 20px;
+  letter-spacing: 0.15em;
   text-align: center;
 }
 

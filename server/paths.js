@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DATA_ROOT = path.join(ROOT, 'data');
+/* Seed configs live inside data/: data/seed/<competition>.json seeds
+   data/<competition>/ — the file name IS the competition directory (and URL). */
+export const SEED_DIR = path.join(DATA_ROOT, 'seed');
 
 /* Directory name == URL path segment, so it must be URL-safe. */
 export const DIR_NAME_RE = /^[a-z0-9][a-z0-9-]*$/;

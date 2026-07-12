@@ -1,5 +1,5 @@
 {
-  "_readme": "One file per competition (copy this to seed/<competition>.json). Edit before the event: competition name, category/criteria names, entries, judge employee IDs and PINs. Weights are percentages per category, aligned with the criteria order, and must sum to 100. Load with: npm run seed (interactive) or npm run seed -- --config seed/<file>.json --dir <name> --reset.",
+  "_readme": "One file per competition; THE FILE NAME IS THE COMPETITION DIRECTORY AND URL (data/seed/ai-day-3.json seeds data/ai-day-3, served at /ai-day-3). Edit before the event: competition name, category/criteria names, entries, judges. Each person's PIN defaults to their employee ID; add a \"pin\" field per person to override. Weights are percentages per category, aligned with the criteria order, and must sum to 100. Load with: npm run seed.",
   "name": "AI Day 3",
   "criteria": ["Creativity & Boldness", "Business Impact", "Feasibility", "Scalability"],
   "categories": [
@@ -38,20 +38,20 @@
     }
   ],
   "judges": [
-    { "employeeId": "EMP001", "name": "Mary Erdoes", "panel": "Panel 1", "pin": "1001" },
-    { "employeeId": "EMP002", "name": "Mike Urciuoli", "panel": "Panel 1", "pin": "1002" },
-    { "employeeId": "EMP003", "name": "Julie Harris", "panel": "Panel 1", "pin": "1003" },
-    { "employeeId": "EMP004", "name": "Andy Powell", "panel": "Panel 1", "pin": "1004" },
-    { "employeeId": "EMP005", "name": "Craig Sullivan", "panel": "Panel 1", "pin": "1005" },
-    { "employeeId": "EMP006", "name": "Dave Frame", "panel": "Panel 2", "pin": "1006" },
-    { "employeeId": "EMP007", "name": "Martin Marron", "panel": "Panel 2", "pin": "1007" },
-    { "employeeId": "EMP008", "name": "Ben Hesse", "panel": "Panel 2", "pin": "1008" },
-    { "employeeId": "EMP009", "name": "Kristian West", "panel": "Panel 2", "pin": "1009" },
-    { "employeeId": "EMP010", "name": "Rosa Rita", "panel": "Panel 2", "pin": "1010" }
+    { "employeeId": "EMP001", "name": "Mary Erdoes", "panel": "Panel 1" },
+    { "employeeId": "EMP002", "name": "Mike Urciuoli", "panel": "Panel 1" },
+    { "employeeId": "EMP003", "name": "Julie Harris", "panel": "Panel 1" },
+    { "employeeId": "EMP004", "name": "Andy Powell", "panel": "Panel 1" },
+    { "employeeId": "EMP005", "name": "Craig Sullivan", "panel": "Panel 1" },
+    { "employeeId": "EMP006", "name": "Dave Frame", "panel": "Panel 2" },
+    { "employeeId": "EMP007", "name": "Martin Marron", "panel": "Panel 2" },
+    { "employeeId": "EMP008", "name": "Ben Hesse", "panel": "Panel 2" },
+    { "employeeId": "EMP009", "name": "Kristian West", "panel": "Panel 2" },
+    { "employeeId": "EMP010", "name": "Rosa Rita", "panel": "Panel 2" }
   ],
   "admins": [
-    { "employeeId": "ADMIN001", "name": "Binita Narang", "pin": "9999" },
-    { "employeeId": "ADMIN002", "name": "Siddhesh Mahadik", "pin": "9999" },
-    { "employeeId": "ADMIN003", "name": "Ifrat Syeda", "pin": "9999" }
+    { "employeeId": "ADMIN001", "name": "Binita Narang" },
+    { "employeeId": "ADMIN002", "name": "Siddhesh Mahadik" },
+    { "employeeId": "ADMIN003", "name": "Ifrat Syeda" }
   ]
 }

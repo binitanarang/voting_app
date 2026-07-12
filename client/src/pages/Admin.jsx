@@ -168,9 +168,9 @@ function JudgesTab({ meta, judges, run }) {
   const panelName = (id) => meta.panels.find((p) => p.id === id)?.name ?? '—';
 
   const resetPin = (j) => {
-    const pin = prompt(`New 4-digit PIN for ${j.name}:`);
+    const pin = prompt(`New PIN for ${j.name}:`);
     if (pin == null) return;
-    if (!/^\d{4}$/.test(pin)) return alert('PIN must be exactly 4 digits.');
+    if (!pin.trim()) return alert('PIN cannot be empty.');
     run(() => api(`/api/admin/judges/${j.id}/pin`, { method: 'POST', body: { pin } }), `PIN reset for ${j.name} (sessions invalidated)`);
   };
 
@@ -179,7 +179,7 @@ function JudgesTab({ meta, judges, run }) {
       {adding ? (
         <div className="card" style={{ marginBottom: 'var(--s-4)' }}>
           <div className="form-row">
-            {[['employeeId', 'Employee ID'], ['name', 'Name'], ['pin', 'PIN (4 digits)']].map(([k, label]) => (
+            {[['employeeId', 'Employee ID'], ['name', 'Name'], ['pin', 'PIN']].map(([k, label]) => (
               <div className="field" key={k}>
                 <label className="label">{label}</label>
                 <input className="input" value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />
