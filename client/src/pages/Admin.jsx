@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { api, apiUrl } from '../api.js';
 
 const TABS = ['Entries', 'Judges', 'Weights', 'Locks'];
 
@@ -339,7 +339,7 @@ function LocksTab({ meta, run }) {
         if (locked) {
           // Server-side archive is already written; also hand the admin a local copy.
           const a = document.createElement('a');
-          a.href = '/api/results.csv';
+          a.href = apiUrl('/api/results.csv');
           a.download = '';
           a.click();
         }

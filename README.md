@@ -4,73 +4,64 @@ Judging app for internal competitions (AI Day, hackathons, …): judges score
 entries 1–5 on the competition's criteria from their phones or laptops, and a
 live dashboard shows weighted and z-score-normalized results with rankings.
 Installable as a PWA; score submissions made offline are queued and synced
-when the connection returns. Multiple competitions can run in parallel, each
-with its own URL and isolated database.
+when the connection returns.
+
+One server hosts any number of competitions in parallel. **A competition's URL
+path is its data directory name:**
+
+```
+http://host:3000/ai-day-3        ↔  data/ai-day-3/
+http://host:3000/uspb-hackathon  ↔  data/uspb-hackathon/
+http://host:3000/                →  landing page listing competitions
+```
 
 - **Frontend:** Vite + React SPA styled with the Mara design system
   (`client/src/styles/mara.css`) — no CSS framework.
 - **Backend:** Express + SQLite (Node's built-in `node:sqlite`, so there are no
-  native-module builds). One process per competition serves both API and SPA.
-- **Auth:** employee ID + 4-digit PIN (scrypt-hashed), 7-day session cookie,
-  failed attempts rate-limited (5 per 15 minutes per employee ID).
+  native-module builds). One process serves every competition and the SPA.
+- **Auth:** employee ID + 4-digit PIN (scrypt-hashed), 7-day session cookie
+  scoped to the competition's path, failed attempts rate-limited (5 per
+  15 minutes per employee ID). Sessions, judges, and locks are fully isolated
+  per competition.
 
 ## Quick start
 
 ```bash
 npm install
-npm run seed        # interactive: pick a seed config and a data directory
-npm run dev         # API on :3000, Vite dev server on :5173 (proxies /api)
+npm run seed        # interactive: pick a seed config and a directory name
+npm run dev         # API on :3000, Vite dev server on :5173 (proxies the API)
 ```
+
+Then open `http://localhost:5173/<directory-name>/`.
 
 Tests (score math — weighting, STANDARDIZE-style z-scores, sd=0 fallback,
 tiebreaks): `npm test`
 
-## Competitions and data directories
-
-Each competition = one seed config + one data directory + one server process:
-
-```
-seed/competition.json        →  data/default/         →  port 3000
-seed/uspb-hackathon.json     →  data/uspb-hackathon/  →  port 3001
-```
-
-A data directory is self-contained: `voting.db` (the SQLite database — judges
-with hashed PINs, entries, weights, every score), `session-secret` (signs login
-cookies), and `exports/` (archives, see below). Copying the directory is a full
-backup of that competition.
-
-### Setting up a competition
+## Setting up a competition
 
 Copy `seed/competition.json` to `seed/<competition>.json` and edit: the
 competition `name` (shown in the app header and login page), category and
 criterion names (any number of categories, each with its own judging panel),
 per-category weights (percentages summing to 100), entries, and judges with
 real employee IDs and PINs. Then run `npm run seed` — it asks which config to
-load and whether to reuse an existing data directory (wipe requires retyping
-its name, and a safety export is taken first) or create a new one.
+load and which directory to use: reuse an existing one (wipe requires retyping
+its name, and a safety export is taken first) or create a new one. The
+directory name becomes the URL path, so it must be lowercase letters, digits,
+and dashes (e.g. `ai-day-3`).
 
 Non-interactive form:
 
 ```bash
-npm run seed -- --config seed/uspb-hackathon.json --dir uspb-hackathon          # new dir
+npm run seed -- --config seed/uspb-hackathon.json --dir uspb-hackathon          # new
 npm run seed -- --config seed/uspb-hackathon.json --dir uspb-hackathon --reset  # wipe + reseed
 ```
+
+New competitions are served immediately — no restart needed. (Reseeding an
+existing competition is also picked up automatically.)
 
 After seeding, everything is editable in the admin UI: entries, judges, PIN
 resets, criterion weights, and voting locks. Weights can change mid-event —
 results are always computed from raw scores, so nothing goes stale.
-
-### Running one or several
-
-```bash
-npm run build                              # build the SPA once (shared by all)
-node scripts/start.mjs default 3000        # AI Day 3
-node scripts/start.mjs uspb-hackathon 3001 # USPB Analyst Hackathon, in parallel
-```
-
-(`DATA_DIR=data/<name> PORT=<port> npm start` does the same thing.) Judges of
-each competition use that instance's URL; databases, sessions, and locks are
-fully isolated.
 
 ## Automatic archives on lock
 
@@ -84,8 +75,8 @@ two files into that competition's `data/<name>/exports/`:
 
 The admin's browser also downloads the CSV. Re-locking archives again with a
 fresh timestamp; the same archive pair is written automatically before any
-reseed wipe (`pre-reseed`), and `DATA_DIR=data/<name> node server/export-cli.js`
-takes one manually.
+reseed wipe (`pre-reseed`), and `node server/export-cli.js <name>` takes one
+manually.
 
 ## How scoring works
 
@@ -107,13 +98,16 @@ row opens the full judge × criterion matrix with each judge's z adjustment.
 
 ```bash
 npm run build
-node scripts/start.mjs default 3000
+PORT=3000 npm start     # one process, every competition
 ```
 
-To keep instances running across reboots, use `pm2`
-(`pm2 start scripts/start.mjs --name ai-day-3 -- default 3000`) or a launchd
-plist per competition. For access from outside the LAN, put the ports behind a
-Cloudflare Tunnel or reverse proxy; the app needs no extra configuration.
+Keep it running across reboots with `pm2 start server/index.js --name voting`
+or a launchd plist. For access from outside the LAN, put the one port behind a
+Cloudflare Tunnel or reverse proxy — judges get
+`https://your-tunnel/ai-day-3`, `https://your-tunnel/uspb-hackathon`, etc.
+
+Each `data/<name>/` directory is a self-contained competition (`voting.db`,
+`session-secret`, `exports/`). Copying it is a full backup.
 
 ## Moving to AWS later
 
@@ -122,13 +116,13 @@ The app is a plain Node process with SQLite files, so migration is a copy:
 1. Provision a small EC2 instance (or Lightsail) with Node 22+.
 2. Copy the repo and the `data/` directory (preserves scores *and* keeps
    judges' sessions valid).
-3. `npm install && npm run build`, then start each competition behind
-   nginx/ALB with HTTPS terminating at the proxy.
+3. `npm install && npm run build && PORT=3000 npm start` behind nginx/ALB with
+   HTTPS terminating at the proxy.
 
 ## Rounds (semi-finals → finals)
 
 Rounds are sequential, so treat each as its own seeding of the same directory:
 lock voting (auto-archives results + a DB snapshot), then reseed with the
 finalist entries — the pre-reseed safety export preserves the previous round
-again. Or give each round its own directory (`--dir ai-day-3-finals`) to keep
-every round live side by side.
+again. Or give each round its own directory/URL (`--dir ai-day-3-finals`) to
+keep every round live side by side.

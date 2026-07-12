@@ -1,6 +1,17 @@
-/* Standalone export: DATA_DIR=data/<competition> node server/export-cli.js [reason]
-   Used by seed.js (in a child process, so it can archive a database this
-   process is about to delete) and handy for manual backups. */
-const { exportSnapshot } = await import('./export.js');
-const result = exportSnapshot(process.argv[2] ?? 'manual');
-console.log(JSON.stringify(result));
+/* Manual archive of one competition:
+     node server/export-cli.js <competition-dir> [reason]
+   e.g. node server/export-cli.js ai-day-3 end-of-event */
+import fs from 'node:fs';
+import path from 'node:path';
+import { competitionDir } from './paths.js';
+import { openCompetition } from './db.js';
+import { exportSnapshot } from './export.js';
+
+const [name, reason = 'manual'] = process.argv.slice(2);
+if (!name || !fs.existsSync(path.join(competitionDir(name), 'voting.db'))) {
+  console.error('Usage: node server/export-cli.js <competition-dir> [reason]');
+  process.exit(1);
+}
+const ctx = openCompetition(name);
+console.log(JSON.stringify(exportSnapshot(ctx, reason)));
+ctx.db.close();

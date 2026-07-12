@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { db, votingLocked, getSetting } from '../db.js';
 import { requireAuth } from '../auth.js';
 
 export const judgeRouter = Router();
 judgeRouter.use(requireAuth);
 
-function ballotFor(judge) {
+function ballotFor(ctx, judge) {
   if (!judge.panel_id) return null;
+  const { db } = ctx;
   const panel = db.prepare('SELECT * FROM panels WHERE id = ?').get(judge.panel_id);
   const category = db.prepare('SELECT * FROM categories WHERE id = ?').get(panel.category_id);
   const criteria = db.prepare('SELECT * FROM criteria ORDER BY position').all();
@@ -36,7 +36,7 @@ function ballotFor(judge) {
     panel: { id: panel.id, name: panel.name },
     category: { id: category.id, name: category.name },
     criteria: criteria.map((c) => ({ id: c.id, name: c.name })),
-    locked: votingLocked(category.id),
+    locked: ctx.votingLocked(category.id),
     entries: withScores,
     progress: {
       scored: withScores.filter((e) => e.complete).length,
@@ -46,14 +46,15 @@ function ballotFor(judge) {
 }
 
 judgeRouter.get('/ballot', (req, res) => {
-  const ballot = ballotFor(req.judge);
+  const ballot = ballotFor(req.ctx, req.judge);
   if (!ballot) return res.status(403).json({ error: 'No panel assigned to this account' });
   res.json(ballot);
 });
 
 /* Autosave: body is a partial map {criterionId: score}. Upserts each pair. */
 judgeRouter.put('/scores/:entryId', (req, res) => {
-  const judge = req.judge;
+  const { ctx, judge } = req;
+  const { db } = ctx;
   if (!judge.panel_id) return res.status(403).json({ error: 'No panel assigned to this account' });
 
   const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(Number(req.params.entryId));
@@ -63,7 +64,7 @@ judgeRouter.put('/scores/:entryId', (req, res) => {
   if (entry.category_id !== panel.category_id) {
     return res.status(403).json({ error: 'Entry is not assigned to your panel' });
   }
-  if (votingLocked(entry.category_id)) {
+  if (ctx.votingLocked(entry.category_id)) {
     return res.status(403).json({ error: 'Voting is locked', locked: true });
   }
 
@@ -93,15 +94,16 @@ judgeRouter.put('/scores/:entryId', (req, res) => {
     upsert.run(judge.id, entry.id, criterionId, val, now);
   }
 
-  res.json({ ok: true, ballot: ballotFor(judge) });
+  res.json({ ok: true, ballot: ballotFor(ctx, judge) });
 });
 
 judgeRouter.get('/meta', (req, res) => {
+  const { db } = req.ctx;
   res.json({
     categories: db.prepare('SELECT id, name, position, voting_locked FROM categories ORDER BY position').all(),
     criteria: db.prepare('SELECT id, name, position FROM criteria ORDER BY position').all(),
     panels: db.prepare('SELECT * FROM panels').all(),
     weights: db.prepare('SELECT * FROM category_weights').all(),
-    globalLocked: getSetting('voting_locked', '0') === '1',
+    globalLocked: req.ctx.getSetting('voting_locked', '0') === '1',
   });
 });

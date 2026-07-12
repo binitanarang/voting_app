@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../api.js';
+import { api, apiUrl } from '../api.js';
 import SpreadBar from '../components/SpreadBar.jsx';
 
 const POLL_MS = 10_000;
@@ -70,7 +70,7 @@ export default function Dashboard() {
           ))}
         </div>
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--s-3)', alignItems: 'center' }}>
-          <a className="btn btn--ghost btn--small" href="/api/results.csv">Export CSV</a>
+          <a className="btn btn--ghost btn--small" href={apiUrl('/api/results.csv')}>Export CSV</a>
           <button className="btn btn--ghost btn--small" onClick={load}>Refresh</button>
         </span>
       </div>

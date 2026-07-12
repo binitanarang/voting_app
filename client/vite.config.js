@@ -24,7 +24,7 @@ export default defineConfig({
       workbox: {
         // The SPA shell is precached; API calls are never served from cache
         // (offline score writes are queued in the app itself).
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [/\/api(\/|$)/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
@@ -45,6 +45,10 @@ export default defineConfig({
     }),
   ],
   server: {
-    proxy: { '/api': 'http://localhost:3000' },
+    proxy: {
+      // Per-competition API (/<comp>/api/...) and the global /api/competitions.
+      '^/[^/]+/api/.*': 'http://localhost:3000',
+      '/api': 'http://localhost:3000',
+    },
   },
 });

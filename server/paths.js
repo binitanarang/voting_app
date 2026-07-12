@@ -1,34 +1,23 @@
-/* Filesystem layout helpers — no SQLite imports, so the seed script can
-   inspect/relocate data directories before any database connection opens.
+/* Filesystem layout helpers — no SQLite imports, so scripts can inspect
+   data directories before any database connection opens.
 
-   Layout: one directory per competition under data/, e.g.
-     data/default/          voting.db, session-secret, exports/
-     data/uspb-hackathon/   voting.db, ...
-   Select one with DATA_DIR (absolute, or relative to the repo root). */
+   Layout: one directory per competition under data/, named exactly like the
+   competition's URL path:
+     data/ai-day-3/         →  http://host:3000/ai-day-3
+     data/uspb-hackathon/   →  http://host:3000/uspb-hackathon
+   Each contains voting.db, session-secret, and exports/. */
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DATA_ROOT = path.join(ROOT, 'data');
-export const DEFAULT_DATA_DIR = path.join(DATA_ROOT, 'default');
 
-export function resolveDataDir(env = process.env.DATA_DIR) {
-  if (!env) return DEFAULT_DATA_DIR;
-  return path.isAbsolute(env) ? env : path.resolve(ROOT, env);
-}
+/* Directory name == URL path segment, so it must be URL-safe. */
+export const DIR_NAME_RE = /^[a-z0-9][a-z0-9-]*$/;
 
-/* One-time move from the original flat layout (data/voting.db) into
-   data/default/. Safe to call repeatedly. */
-export function migrateLegacyLayout() {
-  const legacy = path.join(DATA_ROOT, 'voting.db');
-  if (!fs.existsSync(legacy) || fs.existsSync(path.join(DEFAULT_DATA_DIR, 'voting.db'))) return false;
-  fs.mkdirSync(DEFAULT_DATA_DIR, { recursive: true });
-  for (const f of ['voting.db', 'voting.db-wal', 'voting.db-shm', 'session-secret']) {
-    const src = path.join(DATA_ROOT, f);
-    if (fs.existsSync(src)) fs.renameSync(src, path.join(DEFAULT_DATA_DIR, f));
-  }
-  return true;
+export function competitionDir(name) {
+  return path.join(DATA_ROOT, name);
 }
 
 /* Competition dirs = subdirectories of data/ that contain a voting.db. */

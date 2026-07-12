@@ -1,28 +1,29 @@
 import { Router } from 'express';
-import { db, setSetting, getSetting } from '../db.js';
 import { requireAdmin, hashPin } from '../auth.js';
 import { exportSnapshot } from '../export.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
 
-const nextPosition = (table, where = '', params = []) =>
+const nextPosition = (db, table, where = '', params = []) =>
   (db.prepare(`SELECT COALESCE(MAX(position), 0) + 1 AS p FROM ${table} ${where}`).get(...params)).p;
 
 /* ---------- Entries ---------- */
 
 adminRouter.post('/entries', (req, res) => {
+  const { db } = req.ctx;
   const { name, description = '', categoryId } = req.body ?? {};
   if (!name?.trim() || !db.prepare('SELECT id FROM categories WHERE id = ?').get(Number(categoryId))) {
     return res.status(400).json({ error: 'name and valid categoryId required' });
   }
   const { lastInsertRowid } = db
     .prepare('INSERT INTO entries (category_id, name, description, position) VALUES (?, ?, ?, ?)')
-    .run(Number(categoryId), name.trim(), String(description), nextPosition('entries', 'WHERE category_id = ?', [Number(categoryId)]));
+    .run(Number(categoryId), name.trim(), String(description), nextPosition(db, 'entries', 'WHERE category_id = ?', [Number(categoryId)]));
   res.json({ id: Number(lastInsertRowid) });
 });
 
 adminRouter.put('/entries/:id', (req, res) => {
+  const { db } = req.ctx;
   const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(Number(req.params.id));
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
   const { name = entry.name, description = entry.description, categoryId = entry.category_id } = req.body ?? {};
@@ -35,6 +36,7 @@ adminRouter.put('/entries/:id', (req, res) => {
 });
 
 adminRouter.delete('/entries/:id', (req, res) => {
+  const { db } = req.ctx;
   const id = Number(req.params.id);
   db.prepare('DELETE FROM scores WHERE entry_id = ?').run(id);
   db.prepare('DELETE FROM entries WHERE id = ?').run(id);
@@ -43,7 +45,8 @@ adminRouter.delete('/entries/:id', (req, res) => {
 
 /* ---------- Judges ---------- */
 
-adminRouter.get('/judges', (_req, res) => {
+adminRouter.get('/judges', (req, res) => {
+  const { db } = req.ctx;
   const judges = db.prepare(`
     SELECT j.id, j.employee_id, j.name, j.role, j.panel_id, p.name AS panel_name, p.category_id
     FROM judges j LEFT JOIN panels p ON p.id = j.panel_id
@@ -66,6 +69,7 @@ adminRouter.get('/judges', (_req, res) => {
 });
 
 adminRouter.post('/judges', (req, res) => {
+  const { db } = req.ctx;
   const { employeeId, name, pin, panelId = null, role = 'judge' } = req.body ?? {};
   if (!employeeId?.trim() || !name?.trim() || !/^\d{4}$/.test(String(pin))) {
     return res.status(400).json({ error: 'employeeId, name, and 4-digit pin required' });
@@ -85,6 +89,7 @@ adminRouter.post('/judges', (req, res) => {
 });
 
 adminRouter.put('/judges/:id', (req, res) => {
+  const { db } = req.ctx;
   const judge = db.prepare('SELECT * FROM judges WHERE id = ?').get(Number(req.params.id));
   if (!judge) return res.status(404).json({ error: 'Judge not found' });
   const { name = judge.name, panelId = judge.panel_id, role = judge.role } = req.body ?? {};
@@ -100,6 +105,7 @@ adminRouter.put('/judges/:id', (req, res) => {
 /* PIN reset — also invalidates the judge's existing sessions (token HMAC
    includes pin_hash). */
 adminRouter.post('/judges/:id/pin', (req, res) => {
+  const { db } = req.ctx;
   const { pin } = req.body ?? {};
   if (!/^\d{4}$/.test(String(pin))) return res.status(400).json({ error: '4-digit pin required' });
   const r = db.prepare('UPDATE judges SET pin_hash = ? WHERE id = ?').run(hashPin(String(pin)), Number(req.params.id));
@@ -108,6 +114,7 @@ adminRouter.post('/judges/:id/pin', (req, res) => {
 });
 
 adminRouter.delete('/judges/:id', (req, res) => {
+  const { db } = req.ctx;
   const id = Number(req.params.id);
   if (req.judge.id === id) return res.status(400).json({ error: 'Cannot delete your own account' });
   db.prepare('DELETE FROM scores WHERE judge_id = ?').run(id);
@@ -118,6 +125,7 @@ adminRouter.delete('/judges/:id', (req, res) => {
 /* ---------- Categories, criteria, weights ---------- */
 
 adminRouter.put('/categories/:id', (req, res) => {
+  const { db } = req.ctx;
   const { name } = req.body ?? {};
   if (!name?.trim()) return res.status(400).json({ error: 'name required' });
   const r = db.prepare('UPDATE categories SET name = ? WHERE id = ?').run(name.trim(), Number(req.params.id));
@@ -126,6 +134,7 @@ adminRouter.put('/categories/:id', (req, res) => {
 });
 
 adminRouter.put('/criteria/:id', (req, res) => {
+  const { db } = req.ctx;
   const { name } = req.body ?? {};
   if (!name?.trim()) return res.status(400).json({ error: 'name required' });
   const r = db.prepare('UPDATE criteria SET name = ? WHERE id = ?').run(name.trim(), Number(req.params.id));
@@ -136,6 +145,7 @@ adminRouter.put('/criteria/:id', (req, res) => {
 /* Body: {weights: {criterionId: percent}} — must cover every criterion and
    sum to 100 (±0.01). Stored as fractions. */
 adminRouter.put('/weights/:categoryId', (req, res) => {
+  const { db } = req.ctx;
   const categoryId = Number(req.params.categoryId);
   if (!db.prepare('SELECT id FROM categories WHERE id = ?').get(categoryId)) {
     return res.status(404).json({ error: 'Category not found' });
@@ -164,11 +174,13 @@ adminRouter.put('/weights/:categoryId', (req, res) => {
 /* ---------- Voting locks ---------- */
 
 adminRouter.put('/lock', (req, res) => {
+  const { ctx } = req;
+  const { db } = ctx;
   const { categoryId = null, locked } = req.body ?? {};
   if (typeof locked !== 'boolean') return res.status(400).json({ error: 'locked boolean required' });
   let scope = 'global';
   if (categoryId == null) {
-    setSetting('voting_locked', locked ? '1' : '0');
+    ctx.setSetting('voting_locked', locked ? '1' : '0');
   } else {
     const cat = db.prepare('SELECT name FROM categories WHERE id = ?').get(Number(categoryId));
     if (!cat) return res.status(404).json({ error: 'Category not found' });
@@ -181,14 +193,14 @@ adminRouter.put('/lock', (req, res) => {
   let exportError = null;
   if (locked) {
     try {
-      exported = exportSnapshot(`lock-${scope}`);
+      exported = exportSnapshot(ctx, `lock-${scope}`);
     } catch (err) {
       exportError = err.message;
     }
   }
 
   res.json({
-    globalLocked: getSetting('voting_locked', '0') === '1',
+    globalLocked: ctx.getSetting('voting_locked', '0') === '1',
     categories: db.prepare('SELECT id, name, voting_locked FROM categories ORDER BY position').all(),
     exported,
     exportError,

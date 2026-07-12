@@ -1,4 +1,5 @@
-/* Seeds a competition into its own data directory.
+/* Seeds a competition into its own data directory. The directory name is
+   also the competition's URL path: data/ai-day-3 → http://host:3000/ai-day-3
 
    Interactive (just run `npm run seed`): pick a seed config from seed/*.json,
    then pick an existing competition directory to wipe-and-reseed (confirmed by
@@ -6,14 +7,16 @@
 
    Scriptable flags:
      --config seed/uspb-hackathon.json   which seed file to load
-     --dir uspb-hackathon                target data/<name> (or a full path)
+     --dir uspb-hackathon                target data/<name>
      --reset                             allow wiping an existing database
 */
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import readline from 'node:readline/promises';
-import { ROOT, DATA_ROOT, listCompetitionDirs, migrateLegacyLayout, resolveDataDir } from './paths.js';
+import { ROOT, DIR_NAME_RE, competitionDir, listCompetitionDirs } from './paths.js';
+import { openCompetition } from './db.js';
+import { exportSnapshot } from './export.js';
+import { hashPin } from './auth.js';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -25,8 +28,6 @@ const interactive = process.stdin.isTTY && process.stdout.isTTY;
 const rl = interactive ? readline.createInterface({ input: process.stdin, output: process.stdout }) : null;
 
 const die = (msg) => { console.error(msg); process.exit(1); };
-
-migrateLegacyLayout(); // old flat data/voting.db → data/default/
 
 /* ---------- 1. Which seed config ---------- */
 
@@ -53,34 +54,32 @@ const config = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
 const competitionName = config.name ?? path.basename(configAbs, '.json');
 console.log(`Competition: "${competitionName}" (${path.relative(ROOT, configAbs)})`);
 
-/* ---------- 2. Which data directory ---------- */
+/* ---------- 2. Which data directory (= URL path) ---------- */
 
-let dirArg = flag('dir');
-if (dirArg === true) die('--dir needs a name or path');
+let dirName = flag('dir');
+if (dirName === true) die('--dir needs a directory name');
 const existing = listCompetitionDirs();
 
-if (!dirArg) {
+if (!dirName) {
   if (!rl) die('Non-interactive run: pass --dir <name> (and --reset to wipe an existing one).');
-  console.log('\nWhere should this competition live?');
+  console.log('\nWhere should this competition live? (directory name = URL path)');
   existing.forEach((d, i) =>
-    console.log(`  [${i + 1}] data/${d}  (EXISTS — reseeding WIPES its scores; a safety export is taken first)`));
+    console.log(`  [${i + 1}] data/${d} → /${d}  (EXISTS — reseeding WIPES its scores; a safety export is taken first)`));
   console.log(`  [${existing.length + 1}] Create a new competition directory`);
   const pick = await rl.question(`Choose [1-${existing.length + 1}] `);
   const n = Number(pick);
   if (!Number.isInteger(n) || n < 1 || n > existing.length + 1) die('Invalid choice.');
   if (n <= existing.length) {
-    dirArg = existing[n - 1];
+    dirName = existing[n - 1];
   } else {
-    const name = (await rl.question('New directory name (e.g. uspb-hackathon): ')).trim();
-    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name)) die('Use letters, digits, dashes, underscores.');
-    dirArg = name;
+    dirName = (await rl.question('New directory name (lowercase, e.g. uspb-hackathon): ')).trim();
   }
 }
+if (!DIR_NAME_RE.test(dirName)) {
+  die(`"${dirName}" is not a valid name — it becomes the URL path, so use lowercase letters, digits, and dashes (e.g. ai-day-3).`);
+}
 
-/* Bare names live under data/; paths (containing a separator) are used as-is. */
-const dataDir = dirArg.includes('/') || path.isAbsolute(dirArg)
-  ? resolveDataDir(dirArg)
-  : path.join(DATA_ROOT, dirArg);
+const dataDir = competitionDir(dirName);
 const dbPath = path.join(dataDir, 'voting.db');
 const dirLabel = path.relative(ROOT, dataDir);
 
@@ -92,21 +91,18 @@ if (fs.existsSync(dbPath)) {
   }
   if (!reset) {
     const typed = await rl.question(
-      `${dirLabel} already has a database. Wiping deletes ALL its scores.\nType the directory name ("${path.basename(dataDir)}") to confirm: `
+      `${dirLabel} already has a database. Wiping deletes ALL its scores.\nType the directory name ("${dirName}") to confirm: `
     );
-    if (typed.trim() !== path.basename(dataDir)) die('Confirmation did not match — nothing was changed.');
+    if (typed.trim() !== dirName) die('Confirmation did not match — nothing was changed.');
   }
 
-  // Archive before deleting, from a child process so this one never opens the doomed DB.
-  const out = spawnSync(process.execPath, [path.join(ROOT, 'server', 'export-cli.js'), 'pre-reseed'], {
-    env: { ...process.env, DATA_DIR: dataDir },
-    encoding: 'utf8',
-  });
-  if (out.status === 0) {
-    const { files } = JSON.parse(out.stdout.trim().split('\n').pop());
+  try {
+    const oldCtx = openCompetition(dirName);
+    const { files } = exportSnapshot(oldCtx, 'pre-reseed');
+    oldCtx.db.close();
     console.log(`Safety export saved to ${dirLabel}/exports/: ${files.join(', ')}`);
-  } else {
-    console.warn(`Warning: safety export failed (${(out.stderr || '').trim().split('\n').pop()}) — continuing with wipe.`);
+  } catch (err) {
+    console.warn(`Warning: safety export failed (${err.message}) — continuing with wipe.`);
   }
 
   for (const suffix of ['', '-wal', '-shm']) fs.rmSync(dbPath + suffix, { force: true });
@@ -133,11 +129,10 @@ if (pinProblems.length) die(`PINs must be exactly 4 digits: ${pinProblems.map((j
 
 /* ---------- 5. Load ---------- */
 
-process.env.DATA_DIR = dataDir; // must be set before db.js opens its connection
-const { db, setSetting } = await import('./db.js');
-const { hashPin } = await import('./auth.js');
+const ctx = openCompetition(dirName);
+const { db } = ctx;
 
-setSetting('competition_name', competitionName);
+ctx.setSetting('competition_name', competitionName);
 
 const criterionIds = criteria.map((name, i) => {
   const { lastInsertRowid } = db
@@ -185,4 +180,4 @@ console.log(`\nSeeded "${competitionName}" into ${dirLabel}:`, JSON.stringify({
   judges: judges.length,
   admins: admins.length,
 }));
-console.log(`\nStart it with:\n  node scripts/start.mjs ${path.basename(dataDir)} <port>\n  (or: DATA_DIR=${dirLabel} PORT=<port> npm start)`);
+console.log(`\nLive at: http://localhost:3000/${dirName}  (npm start serves every competition)`);
