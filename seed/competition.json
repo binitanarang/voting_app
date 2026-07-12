@@ -1,0 +1,56 @@
+{
+  "_readme": "Edit this file before the event: real category/criteria names, entry names, judge employee IDs and PINs. Weights are percentages per category, aligned with the criteria order, and must sum to 100. Load with: npm run seed (add -- --reset to wipe an existing database).",
+  "criteria": ["Creativity & Boldness", "Business Impact", "Feasibility", "Scalability"],
+  "categories": [
+    {
+      "name": "Category 1 - Best of What We've Built",
+      "panel": "Panel 1",
+      "weights": [30, 30, 20, 20],
+      "entries": [
+        { "name": "Entry A1", "description": "Short description of entry A1." },
+        { "name": "Entry A2", "description": "Short description of entry A2." },
+        { "name": "Entry A3", "description": "Short description of entry A3." },
+        { "name": "Entry A4", "description": "Short description of entry A4." },
+        { "name": "Entry A5", "description": "Short description of entry A5." },
+        { "name": "Entry A6", "description": "Short description of entry A6." },
+        { "name": "Entry A7", "description": "Short description of entry A7." },
+        { "name": "Entry A8", "description": "Short description of entry A8." },
+        { "name": "Entry A9", "description": "Short description of entry A9." },
+        { "name": "Entry A10", "description": "Short description of entry A10." }
+      ]
+    },
+    {
+      "name": "Category 2 - Shark-tank Moonshot Pitches",
+      "panel": "Panel 2",
+      "weights": [35, 20, 25, 20],
+      "entries": [
+        { "name": "Entry B1", "description": "Short description of entry B1." },
+        { "name": "Entry B2", "description": "Short description of entry B2." },
+        { "name": "Entry B3", "description": "Short description of entry B3." },
+        { "name": "Entry B4", "description": "Short description of entry B4." },
+        { "name": "Entry B5", "description": "Short description of entry B5." },
+        { "name": "Entry B6", "description": "Short description of entry B6." },
+        { "name": "Entry B7", "description": "Short description of entry B7." },
+        { "name": "Entry B8", "description": "Short description of entry B8." },
+        { "name": "Entry B9", "description": "Short description of entry B9." }
+      ]
+    }
+  ],
+  "judges": [
+    { "employeeId": "EMP001", "name": "Mary Erdoes", "panel": "Panel 1", "pin": "1001" },
+    { "employeeId": "EMP002", "name": "Mike Urciuoli", "panel": "Panel 1", "pin": "1002" },
+    { "employeeId": "EMP003", "name": "Julie Harris", "panel": "Panel 1", "pin": "1003" },
+    { "employeeId": "EMP004", "name": "Andy Powell", "panel": "Panel 1", "pin": "1004" },
+    { "employeeId": "EMP005", "name": "Craig Sullivan", "panel": "Panel 1", "pin": "1005" },
+    { "employeeId": "EMP006", "name": "Dave Frame", "panel": "Panel 2", "pin": "1006" },
+    { "employeeId": "EMP007", "name": "Martin Marron", "panel": "Panel 2", "pin": "1007" },
+    { "employeeId": "EMP008", "name": "Ben Hesse", "panel": "Panel 2", "pin": "1008" },
+    { "employeeId": "EMP009", "name": "Kristian West", "panel": "Panel 2", "pin": "1009" },
+    { "employeeId": "EMP010", "name": "Rosa Rita", "panel": "Panel 2", "pin": "1010" }
+  ],
+  "admins": [
+    { "employeeId": "ADMIN001", "name": "Binita Narang", "pin": "9999" },
+    { "employeeId": "ADMIN002", "name": "Siddhesh Mahadik", "pin": "9999" },
+    { "employeeId": "ADMIN003", "name": "Ifrat Syeda", "pin": "9999" }
+  ]
+}
