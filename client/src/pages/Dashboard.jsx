@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { api, apiUrl } from '../api.js';
 import SpreadBar from '../components/SpreadBar.jsx';
+import Chevron from '../components/Chevron.jsx';
 
 const POLL_MS = 10_000;
 
@@ -20,8 +20,63 @@ const DownloadIcon = () => (
   </svg>
 );
 
+
 const fmt = (v, d = 2) => (v == null ? '—' : v.toFixed(d));
 const fmtZ = (v) => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}`);
+
+/* Expandable entry row: click to reveal how every judge on the panel scored
+   this entry — raw criterion scores, weighted score, and z-adjustment. */
+function EntryRow({ entry, criteria, open, onToggle }) {
+  return (
+    <>
+      <tr className="clickable" onClick={onToggle} aria-expanded={open}>
+        <td className="rank">{entry.rank ?? '—'}</td>
+        <td className="col-name">
+          <span className="judge-toggle"><Chevron open={open} /> {entry.name}</span>
+        </td>
+        <td className="num col-metric">{fmt(entry.avgWeighted)}</td>
+        <td className="num col-metric">{fmtZ(entry.normalized)}</td>
+        <td className="num col-metric">{entry.judgesScored}/{entry.judgesTotal}</td>
+        <td className="col-spread"><SpreadBar spread={entry.spread} avg={entry.avgWeighted} /></td>
+      </tr>
+      {open && (
+        <tr className="judge-detail">
+          <td colSpan={6}>
+            <div className="table-wrap">
+              <table className="table table--sub">
+                <thead>
+                  <tr>
+                    <th className="col-name">Judge name</th>
+                    {criteria.map((c) => <th key={c.id} className="num">{c.name}</th>)}
+                    <th className="num">Weighted</th>
+                    <th className="num">Normalized</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entry.perJudge.map((pj) => (
+                    <tr key={pj.judgeId}>
+                      <td className="col-name">{pj.judgeName}</td>
+                      {criteria.map((c) => (
+                        <td key={c.id} className="num">{pj.criteria[c.id] ?? '—'}</td>
+                      ))}
+                      <td className="num">{fmt(pj.weighted)}</td>
+                      <td
+                        className="num"
+                        style={{ color: pj.z == null ? undefined : pj.z >= 0 ? 'var(--c-green)' : 'var(--c-terracotta)' }}
+                      >
+                        {fmtZ(pj.z)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
 
 const COLUMNS = [
   { key: 'rank', label: '#', sort: (e) => e.rank ?? Infinity, asc: true, cls: '' },
@@ -36,7 +91,14 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [catId, setCatId] = useState(null);
   const [sort, setSort] = useState({ key: 'rank', dir: 1 });
-  const navigate = useNavigate();
+  const [openEntries, setOpenEntries] = useState(() => new Set());
+
+  const toggleEntry = (id) =>
+    setOpenEntries((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const load = () =>
     api('/api/results')
@@ -80,12 +142,12 @@ export default function Dashboard() {
         </div>
         <div className="page-actions">
           <div className="page-actions__buttons">
-            <button className="btn btn--ghost btn--small" onClick={load} title="Refresh now">
-              <RefreshIcon /> Refresh
-            </button>
             <a className="btn btn--ghost btn--small" href={apiUrl('/api/results.csv')} title="Download results as CSV">
               <DownloadIcon /> Export CSV
             </a>
+            <button className="btn btn--ghost btn--small" onClick={load} title="Refresh now">
+              <RefreshIcon /> Refresh
+            </button>
           </div>
           <span className="page-actions__meta num">
             Updated {new Date(data.generatedAt).toLocaleTimeString()} · refreshes every 10s
@@ -123,14 +185,13 @@ export default function Dashboard() {
           </thead>
           <tbody>
             {sorted.map((e) => (
-              <tr key={e.id} className="clickable" onClick={() => navigate(`/dashboard/entry/${e.id}`)}>
-                <td className="rank">{e.rank ?? '—'}</td>
-                <td className="col-name">{e.name}</td>
-                <td className="num col-metric">{fmt(e.avgWeighted)}</td>
-                <td className="num col-metric">{fmtZ(e.normalized)}</td>
-                <td className="num col-metric">{e.judgesScored}/{e.judgesTotal}</td>
-                <td className="col-spread"><SpreadBar spread={e.spread} avg={e.avgWeighted} /></td>
-              </tr>
+              <EntryRow
+                key={e.id}
+                entry={e}
+                criteria={data.criteria}
+                open={openEntries.has(e.id)}
+                onToggle={() => toggleEntry(e.id)}
+              />
             ))}
           </tbody>
         </table>
@@ -141,33 +202,6 @@ export default function Dashboard() {
         scale use). Ties break on average weighted score.
       </p>
 
-      <section style={{ marginTop: 'var(--s-7)' }}>
-        <p className="label">Judge progress · {category.name}</p>
-        <div className="table-wrap" style={{ marginTop: 'var(--s-3)' }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th className="col-name">Judge name</th>
-                <th className="num col-metric">Scored</th>
-                <th className="num col-metric">Mean</th>
-                <th className="num col-metric">Std dev</th>
-              </tr>
-            </thead>
-            <tbody>
-              {category.judges.map((j, i) => (
-                <tr key={j.id}>
-                  <td className="rank">{i + 1}</td>
-                  <td className="col-name">{j.name}</td>
-                  <td className="num col-metric">{j.scoredCount}/{j.totalEntries}</td>
-                  <td className="num col-metric">{fmt(j.mean)}</td>
-                  <td className="num col-metric">{fmt(j.sd)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
     </main>
   );
 }

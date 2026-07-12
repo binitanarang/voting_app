@@ -21,7 +21,7 @@ http://host:3000/                →  landing page listing competitions
   native-module builds). One process serves every competition and the SPA.
 - **Auth:** employee ID + PIN (scrypt-hashed; by default a person's PIN is
   their employee ID — set a `pin` per person in the seed file to override),
-  7-day session cookie scoped to the competition's path, failed attempts
+  1-day session cookie scoped to the competition's path, failed attempts
   rate-limited (5 per 15 minutes per employee ID). Sessions, judges, and locks
   are fully isolated per competition.
 

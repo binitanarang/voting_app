@@ -5,7 +5,7 @@ import Login from './pages/Login.jsx';
 import Ballot from './pages/Ballot.jsx';
 import ScoreEntry from './pages/ScoreEntry.jsx';
 import Dashboard from './pages/Dashboard.jsx';
-import EntryDetail from './pages/EntryDetail.jsx';
+import Judges from './pages/Judges.jsx';
 import Admin from './pages/Admin.jsx';
 
 const AuthContext = createContext(null);
@@ -33,14 +33,11 @@ function Header() {
   };
   return (
     <header className="site-header">
-      <div className="site-header__inner">
+      <div className="site-header__top">
         <span className="brand">
           <CompetitionName />
         </span>
-        <nav className="site-nav">
-          {user.panel && <NavLink to="/">Ballot</NavLink>}
-          <NavLink to="/dashboard">Leaderboard</NavLink>
-          {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
+        <span className="site-header__user">
           {pending > 0 && (
             <span className="save-status save-status--queued" title="Scores waiting to sync">
               {pending} pending
@@ -49,8 +46,14 @@ function Header() {
           <button className="btn btn--ghost btn--small" onClick={logout}>
             {user.name.split(' ')[0]} · Log out
           </button>
-        </nav>
+        </span>
       </div>
+      <nav className="site-nav">
+        {user.panel && <NavLink to="/">Ballot</NavLink>}
+        <NavLink to="/judges">Judges</NavLink>
+        <NavLink to="/dashboard">Leaderboard</NavLink>
+        {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
+      </nav>
     </header>
   );
 }
@@ -96,8 +99,8 @@ export default function App() {
           }
         />
         <Route path="/entry/:id" element={<Protected><ScoreEntry /></Protected>} />
+        <Route path="/judges" element={<Protected><Judges /></Protected>} />
         <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
-        <Route path="/dashboard/entry/:id" element={<Protected><EntryDetail /></Protected>} />
         <Route path="/admin" element={<Protected admin><Admin /></Protected>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

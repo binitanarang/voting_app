@@ -36,14 +36,20 @@ html {
   top: 0;
   z-index: 10;
 }
-.site-header__inner {
+/* Row 1: brand + signed-in user. Row 2: nav tabs. */
+.site-header__top {
   max-width: 1080px;
   margin: 0 auto;
-  padding: var(--s-3) var(--s-4);
+  padding: var(--s-3) var(--s-4) var(--s-2);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s-4);
-  flex-wrap: wrap;
+}
+.site-header__user {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
 }
 .brand {
   font-family: var(--f-serif);
@@ -54,10 +60,14 @@ html {
 }
 .brand em { color: var(--c-ochre); font-style: italic; }
 .site-nav {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--s-4);
   display: flex;
-  gap: var(--s-4);
+  gap: var(--s-5);
   align-items: center;
-  margin-left: auto;
+  border-top: var(--hr) solid var(--c-hairline);
+  overflow-x: auto;
 }
 .site-nav a {
   font-family: var(--f-mono);
@@ -65,9 +75,10 @@ html {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--c-umber);
-  padding: var(--s-1) 0;
+  padding: var(--s-3) 0;
   border-bottom: 2px solid transparent;
   transition: color var(--m-fast) var(--e-out);
+  white-space: nowrap;
 }
 .site-nav a:hover { color: var(--c-ochre); text-decoration: none; }
 .site-nav a.active { color: var(--c-ink); border-bottom-color: var(--c-ochre); }
@@ -187,9 +198,13 @@ html {
 
 /* Explicit column widths (leaderboard tables). Declared after the generic
    .num rule so they win the tie. */
-.table th.col-name, .table td.col-name { width: 300px; white-space: normal; }
+.table th.col-name, .table td.col-name {
+  width: 300px;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
 .table th.col-metric, .table td.col-metric { width: 130px; white-space: nowrap; }
-.table th.col-spread, .table td.col-spread { width: 200px; }
+.table th.col-spread, .table td.col-spread { width: 200px; padding-left: var(--s-7); }
 .table tr.clickable { cursor: pointer; transition: background var(--m-fast) var(--e-out); }
 .table tr.clickable:hover { background: var(--c-parchment); }
 .rank {
@@ -312,6 +327,25 @@ html {
 .save-status--saved { color: var(--c-sage); }
 .save-status--queued { color: var(--c-terracotta); }
 
+/* ---------- Expandable judge rows ---------- */
+
+.judge-toggle { display: inline-flex; align-items: center; gap: var(--s-2); }
+.chevron {
+  flex-shrink: 0;
+  color: var(--c-umber);
+  transition: transform var(--m-fast) var(--e-out);
+}
+.chevron--open { transform: rotate(90deg); }
+
+.judge-detail td {
+  background: var(--c-parchment);
+  padding: var(--s-4) var(--s-5);
+}
+.table--sub { background: transparent; }
+.table--sub td { font-size: 13px; padding: var(--s-2) var(--s-3); }
+.table--sub th { font-size: 9px; }
+.table--sub th.col-name, .table--sub td.col-name { width: 260px; }
+
 /* ---------- Page header with action toolbar ---------- */
 
 /* Eyebrow label + title on the left; action buttons top-right (level with
@@ -326,7 +360,7 @@ html {
 .page-actions {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: var(--s-2);
   margin-left: auto;
 }

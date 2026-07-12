@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-const SESSION_DAYS = 7;
+const SESSION_DAYS = 1;
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 
