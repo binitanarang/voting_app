@@ -11,6 +11,14 @@ import Admin from './pages/Admin.jsx';
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
+/* Competition name with the Mara italic-accent treatment on the last word. */
+export function CompetitionName() {
+  const { competition } = useAuth();
+  const words = competition.split(' ');
+  const last = words.pop();
+  return <>{words.join(' ')}{words.length > 0 && ' '}<em>{last}</em></>;
+}
+
 function Header() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +35,7 @@ function Header() {
     <header className="site-header">
       <div className="site-header__inner">
         <span className="brand">
-          AI <em>Competition</em>
+          <CompetitionName />
         </span>
         <nav className="site-nav">
           {user.panel && <NavLink to="/">Ballot</NavLink>}
@@ -58,16 +66,24 @@ function Protected({ children, admin = false }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [competition, setCompetition] = useState('Competition');
 
   useEffect(() => {
     api('/api/me')
       .then((d) => setUser(d.user))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
+    api('/api/config')
+      .then((c) => setCompetition(c.name))
+      .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    document.title = `${competition} · Judging`;
+  }, [competition]);
+
   return (
-    <AuthContext.Provider value={{ user, setUser, loading }}>
+    <AuthContext.Provider value={{ user, setUser, loading, competition }}>
       <Header />
       <Routes>
         <Route path="/login" element={<Login />} />

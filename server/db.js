@@ -1,12 +1,13 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ROOT, DEFAULT_DATA_DIR, resolveDataDir, migrateLegacyLayout } from './paths.js';
 
-export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const DATA_DIR = path.join(ROOT, 'data');
+export { ROOT };
+export const DATA_DIR = resolveDataDir();
 export const DB_PATH = path.join(DATA_DIR, 'voting.db');
 
+if (DATA_DIR === DEFAULT_DATA_DIR) migrateLegacyLayout();
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 export const db = new DatabaseSync(DB_PATH);

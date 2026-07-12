@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db, setSetting, getSetting } from '../db.js';
 import { requireAdmin, hashPin } from '../auth.js';
+import { exportSnapshot } from '../export.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
@@ -165,14 +166,31 @@ adminRouter.put('/weights/:categoryId', (req, res) => {
 adminRouter.put('/lock', (req, res) => {
   const { categoryId = null, locked } = req.body ?? {};
   if (typeof locked !== 'boolean') return res.status(400).json({ error: 'locked boolean required' });
+  let scope = 'global';
   if (categoryId == null) {
     setSetting('voting_locked', locked ? '1' : '0');
   } else {
-    const r = db.prepare('UPDATE categories SET voting_locked = ? WHERE id = ?').run(locked ? 1 : 0, Number(categoryId));
-    if (!r.changes) return res.status(404).json({ error: 'Category not found' });
+    const cat = db.prepare('SELECT name FROM categories WHERE id = ?').get(Number(categoryId));
+    if (!cat) return res.status(404).json({ error: 'Category not found' });
+    db.prepare('UPDATE categories SET voting_locked = ? WHERE id = ?').run(locked ? 1 : 0, Number(categoryId));
+    scope = cat.name;
   }
+
+  // Locking is a decision point — archive results + a DB snapshot automatically.
+  let exported = null;
+  let exportError = null;
+  if (locked) {
+    try {
+      exported = exportSnapshot(`lock-${scope}`);
+    } catch (err) {
+      exportError = err.message;
+    }
+  }
+
   res.json({
     globalLocked: getSetting('voting_locked', '0') === '1',
     categories: db.prepare('SELECT id, name, voting_locked FROM categories ORDER BY position').all(),
+    exported,
+    exportError,
   });
 });

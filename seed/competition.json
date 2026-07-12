@@ -1,5 +1,6 @@
 {
-  "_readme": "Edit this file before the event: real category/criteria names, entry names, judge employee IDs and PINs. Weights are percentages per category, aligned with the criteria order, and must sum to 100. Load with: npm run seed (add -- --reset to wipe an existing database).",
+  "_readme": "One file per competition (copy this to seed/<competition>.json). Edit before the event: competition name, category/criteria names, entries, judge employee IDs and PINs. Weights are percentages per category, aligned with the criteria order, and must sum to 100. Load with: npm run seed (interactive) or npm run seed -- --config seed/<file>.json --dir <name> --reset.",
+  "name": "AI Day 3",
   "criteria": ["Creativity & Boldness", "Business Impact", "Feasibility", "Scalability"],
   "categories": [
     {

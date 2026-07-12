@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
-import { ROOT } from './db.js';
+import { ROOT, DATA_DIR, getSetting } from './db.js';
 import { attachJudge, requireAuth, handleLogin, handleLogout, publicJudge } from './auth.js';
 import { judgeRouter } from './routes/judge.js';
 import { resultsRouter } from './routes/results.js';
@@ -11,6 +11,9 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.json());
 app.use(attachJudge);
+
+/* Public: which competition this instance serves (shown on the login page). */
+app.get('/api/config', (_req, res) => res.json({ name: getSetting('competition_name', 'Competition') }));
 
 app.post('/api/login', handleLogin);
 app.post('/api/logout', handleLogout);
@@ -32,5 +35,6 @@ if (fs.existsSync(dist)) {
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {
-  console.log(`Voting app API on http://localhost:${port}${fs.existsSync(dist) ? ' (serving client/dist)' : ' (API only — run client dev server)'}`);
+  const name = getSetting('competition_name', 'Competition');
+  console.log(`"${name}" on http://localhost:${port} · data: ${path.relative(ROOT, DATA_DIR)}${fs.existsSync(dist) ? '' : ' (API only — run client dev server)'}`);
 });

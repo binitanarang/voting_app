@@ -17,9 +17,9 @@ export default function Admin() {
 
   const run = async (fn, okText = 'Saved') => {
     try {
-      await fn();
+      const res = await fn();
       await Promise.all([loadMeta(), loadJudges()]);
-      setFlash({ kind: 'ok', text: okText });
+      setFlash({ kind: 'ok', text: typeof okText === 'function' ? okText(res) : okText });
     } catch (e) {
       setFlash({ kind: 'err', text: e.message });
     }
@@ -333,8 +333,24 @@ function WeightsTab({ meta, run }) {
 
 function LocksTab({ meta, run }) {
   const setLock = (categoryId, locked) =>
-    run(() => api('/api/admin/lock', { method: 'PUT', body: { categoryId, locked } }),
-      locked ? 'Voting locked' : 'Voting unlocked');
+    run(
+      async () => {
+        const res = await api('/api/admin/lock', { method: 'PUT', body: { categoryId, locked } });
+        if (locked) {
+          // Server-side archive is already written; also hand the admin a local copy.
+          const a = document.createElement('a');
+          a.href = '/api/results.csv';
+          a.download = '';
+          a.click();
+        }
+        return res;
+      },
+      (res) => {
+        if (!locked) return 'Voting unlocked';
+        if (res.exportError) return `Voting locked, but auto-export failed: ${res.exportError}`;
+        return `Voting locked — results archived on the server (${res.exported.files.join(', ')}) and CSV downloaded.`;
+      }
+    );
 
   return (
     <section>
