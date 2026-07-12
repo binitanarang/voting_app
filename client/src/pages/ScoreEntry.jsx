@@ -63,7 +63,7 @@ export default function ScoreEntry() {
       {entry.description && <p className="lede">{entry.description}</p>}
 
       {ballot.locked && (
-        <div className="notice notice--warn">Voting is locked — scores are read-only.</div>
+        <div className="notice notice--warn">Scoring is closed — scores are read-only.</div>
       )}
 
       <div style={{ margin: 'var(--s-5) 0' }}>

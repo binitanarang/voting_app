@@ -39,7 +39,7 @@ function Header() {
         </span>
         <nav className="site-nav">
           {user.panel && <NavLink to="/">Ballot</NavLink>}
-          <NavLink to="/dashboard">Dashboard</NavLink>
+          <NavLink to="/dashboard">Leaderboard</NavLink>
           {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
           {pending > 0 && (
             <span className="save-status save-status--queued" title="Scores waiting to sync">

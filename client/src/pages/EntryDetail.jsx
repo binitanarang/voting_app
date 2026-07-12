@@ -74,7 +74,7 @@ export default function EntryDetail() {
                   ))}
                   <td className="num">{fmt(pj.weighted)}</td>
                   <td className="num">{fmt(st?.mean)}</td>
-                  <td className="num" style={{ color: pj.z == null ? undefined : pj.z >= 0 ? 'var(--c-sage)' : 'var(--c-terracotta)' }}>
+                  <td className="num" style={{ color: pj.z == null ? undefined : pj.z >= 0 ? 'var(--c-green)' : 'var(--c-terracotta)' }}>
                     {fmtZ(pj.z)}
                   </td>
                 </tr>

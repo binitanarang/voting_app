@@ -99,7 +99,7 @@ function EntriesTab({ meta, run }) {
       )}
       <div className="table-wrap" style={{ marginTop: 'var(--s-4)' }}>
         <table className="table">
-          <thead><tr><th>Entry</th><th>Category</th><th>Description</th><th /></tr></thead>
+          <thead><tr><th>Entry name</th><th>Category</th><th>Description</th><th /></tr></thead>
           <tbody>
             {entries.map((e) => (
               <tr key={e.id}>
@@ -346,9 +346,9 @@ function LocksTab({ meta, run }) {
         return res;
       },
       (res) => {
-        if (!locked) return 'Voting unlocked';
-        if (res.exportError) return `Voting locked, but auto-export failed: ${res.exportError}`;
-        return `Voting locked — results archived on the server (${res.exported.files.join(', ')}) and CSV downloaded.`;
+        if (!locked) return 'Scoring reopened';
+        if (res.exportError) return `Scoring closed, but auto-export failed: ${res.exportError}`;
+        return `Scoring closed — results archived on the server (${res.exported.files.join(', ')}) and CSV downloaded.`;
       }
     );
 
@@ -356,14 +356,14 @@ function LocksTab({ meta, run }) {
     <section>
       <div className="switch-row">
         <div>
-          <p style={{ fontSize: 17 }}>All voting</p>
-          <p className="muted" style={{ fontSize: 13 }}>Overrides per-category locks while on.</p>
+          <p style={{ fontSize: 17 }}>All scoring</p>
+          <p className="muted" style={{ fontSize: 13 }}>Overrides per-category scoring while on.</p>
         </div>
         <button
           className={`btn btn--small ${meta.globalLocked ? 'btn--danger' : 'btn--ghost'}`}
           onClick={() => setLock(null, !meta.globalLocked)}
         >
-          {meta.globalLocked ? 'Locked — unlock' : 'Open — lock'}
+          {meta.globalLocked ? 'Closed — reopen' : 'Open — close scoring'}
         </button>
       </div>
       {meta.categories.map((c) => (
@@ -373,7 +373,7 @@ function LocksTab({ meta, run }) {
             className={`btn btn--small ${c.voting_locked ? 'btn--danger' : 'btn--ghost'}`}
             onClick={() => setLock(c.id, !c.voting_locked)}
           >
-            {c.voting_locked ? 'Locked — unlock' : 'Open — lock'}
+            {c.voting_locked ? 'Closed — reopen' : 'Open — close scoring'}
           </button>
         </div>
       ))}

@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 
 export function EntryBadge({ entry, criteriaCount }) {
-  if (entry.complete) return <span className="badge badge--done">Scored</span>;
+  if (entry.complete) return <span className="badge badge--done">Complete</span>;
   if (entry.scoredCriteria > 0)
-    return <span className="badge badge--partial">{entry.scoredCriteria}/{criteriaCount}</span>;
-  return <span className="badge badge--todo">To do</span>;
+    return <span className="badge badge--partial">In progress · {entry.scoredCriteria}/{criteriaCount}</span>;
+  return <span className="badge badge--todo">Not started</span>;
 }
 
 export default function Ballot() {
@@ -30,7 +30,7 @@ export default function Ballot() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-4)' }}>
         <p className="num muted">{scored} of {total} entries scored</p>
-        {ballot.locked && <span className="badge badge--locked">Voting locked</span>}
+        {ballot.locked && <span className="badge badge--locked">Scoring closed</span>}
       </div>
       <div className="progress-track" style={{ margin: 'var(--s-3) 0 var(--s-5)' }}>
         <div className="progress-fill" style={{ width: `${total ? (scored / total) * 100 : 0}%` }} />
@@ -38,11 +38,15 @@ export default function Ballot() {
 
       {incomplete.length > 0 && (
         <div className="notice notice--warn">
-          {incomplete.length === 1 ? 'One entry has' : `${incomplete.length} entries have`} a partially
-          completed ballot — unfinished entries don't count toward results.
+          {incomplete.length === 1 ? 'One entry is' : `${incomplete.length} entries are`} partially
+          scored — incomplete entries don't count toward results.
         </div>
       )}
 
+      <div className="entry-list-head">
+        <span className="label">Entry name</span>
+        <span className="label">Scoring</span>
+      </div>
       <ul className="entry-list">
         {ballot.entries.map((e) => (
           <li key={e.id}>

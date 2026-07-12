@@ -6,6 +6,10 @@ html {
      come from a Google Fonts <link> in index.html. */
   --f-serif-source: 'Fraunces';
   --f-mono-source: 'JetBrains Mono';
+
+  /* App extension: mara's --c-sage is too gray to read as "green" at small
+     sizes, so success states use a true green. */
+  --c-green: #2e7d32;
 }
 
 #root {
@@ -90,7 +94,7 @@ html {
 .num { font-family: var(--f-mono); font-size: 13px; }
 .muted { color: var(--c-umber); }
 .error-text { color: var(--c-terracotta); font-size: 14px; }
-.ok-text { color: var(--c-sage); font-size: 14px; }
+.ok-text { color: var(--c-green); font-size: 14px; }
 
 /* ---------- Buttons & inputs ---------- */
 
@@ -171,7 +175,21 @@ html {
   font-size: 15px;
   vertical-align: middle;
 }
-.table td.num, .table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Numeric and rank columns shrink to their content; the name column
+   absorbs the leftover width instead of everything stretching evenly. */
+.table td.num, .table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  width: 1%;
+  white-space: nowrap;
+}
+.table td.rank { width: 1%; white-space: nowrap; }
+
+/* Explicit column widths (leaderboard tables). Declared after the generic
+   .num rule so they win the tie. */
+.table th.col-name, .table td.col-name { width: 300px; white-space: normal; }
+.table th.col-metric, .table td.col-metric { width: 130px; white-space: nowrap; }
+.table th.col-spread, .table td.col-spread { width: 200px; }
 .table tr.clickable { cursor: pointer; transition: background var(--m-fast) var(--e-out); }
 .table tr.clickable:hover { background: var(--c-parchment); }
 .rank {
@@ -232,7 +250,11 @@ html {
   padding: 3px var(--s-2);
   border: var(--hr) solid currentColor;
 }
-.badge--done { color: var(--c-sage); }
+.badge--done {
+  color: var(--c-green);
+  font-weight: 700;
+  background: rgba(46, 125, 50, 0.1); /* --c-green at 10% */
+}
 .badge--partial { color: var(--c-terracotta); }
 .badge--todo { color: var(--c-umber); opacity: 0.7; }
 .badge--locked { color: var(--c-terracotta); }
@@ -240,13 +262,23 @@ html {
 .spread {
   position: relative;
   height: 6px;
-  min-width: 72px;
+  width: 100%;
+  min-width: 90px;
   background: var(--c-hairline);
 }
 .spread__band { position: absolute; top: 0; bottom: 0; background: var(--c-ochre); }
 .spread__avg { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--c-ink); }
 
 /* ---------- Entry list (ballot) ---------- */
+
+.entry-list-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-2);
+  border-bottom: var(--hr) solid var(--c-ink);
+}
+.entry-list-head .label { font-size: 10px; }
 
 .entry-list { list-style: none; }
 .entry-list li { border-bottom: var(--hr) solid var(--c-hairline); }
@@ -279,6 +311,37 @@ html {
 .save-status { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
 .save-status--saved { color: var(--c-sage); }
 .save-status--queued { color: var(--c-terracotta); }
+
+/* ---------- Page header with action toolbar ---------- */
+
+/* Eyebrow label + title on the left; action buttons top-right (level with
+   the label) with the updated-at caption directly beneath them. */
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+.page-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+.page-actions__buttons { display: flex; gap: var(--s-2); align-items: center; }
+.page-actions__buttons .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.page-actions__meta {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--c-umber);
+  opacity: 0.8;
+}
 
 /* ---------- Admin ---------- */
 

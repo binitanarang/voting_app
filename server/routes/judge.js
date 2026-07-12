@@ -65,7 +65,7 @@ judgeRouter.put('/scores/:entryId', (req, res) => {
     return res.status(403).json({ error: 'Entry is not assigned to your panel' });
   }
   if (ctx.votingLocked(entry.category_id)) {
-    return res.status(403).json({ error: 'Voting is locked', locked: true });
+    return res.status(403).json({ error: 'Scoring is closed', locked: true });
   }
 
   const body = req.body;
