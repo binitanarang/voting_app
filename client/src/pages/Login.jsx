@@ -60,6 +60,7 @@ export default function Login() {
             onChange={(e) => setPin(e.target.value)}
             required
           />
+          <p className="muted" style={{ fontSize: 13 }}>Your PIN is the same as your employee ID.</p>
         </div>
         {error && <p className="error-text" role="alert">{error}</p>}
         <button className="btn" disabled={busy || !pin.trim() || !employeeId.trim()} style={{ marginTop: 'var(--s-4)', width: '100%' }}>
