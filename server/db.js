@@ -57,6 +57,7 @@ const SCHEMA = `
     category_id INTEGER NOT NULL REFERENCES categories(id),
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    team TEXT NOT NULL DEFAULT '',
     position INTEGER NOT NULL
   );
 
@@ -86,6 +87,13 @@ export function openCompetition(name, dataDir = competitionDir(name)) {
   const dbPath = path.join(dataDir, 'voting.db');
   const db = new DatabaseSync(dbPath);
   db.exec(SCHEMA);
+
+  // Databases created before the team column existed get it added in place
+  // (CREATE TABLE IF NOT EXISTS never alters an existing table).
+  const entryColumns = db.prepare('PRAGMA table_info(entries)').all();
+  if (!entryColumns.some((c) => c.name === 'team')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN team TEXT NOT NULL DEFAULT ''`);
+  }
 
   const secretPath = path.join(dataDir, 'session-secret');
   if (!fs.existsSync(secretPath)) {

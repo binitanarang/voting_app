@@ -345,6 +345,10 @@ html {
 .table--sub td { font-size: 13px; padding: var(--s-2) var(--s-3); }
 .table--sub th { font-size: 9px; }
 .table--sub th.col-name, .table--sub td.col-name { width: 260px; }
+/* Criteria, Weighted, and Normalized columns share one width so the scorecard
+   grid reads evenly; long criterion headers wrap instead of stretching. */
+.table--sub th.num, .table--sub td.num { width: 90px; }
+.table--sub th.num { white-space: normal; }
 
 /* ---------- Page header with action toolbar ---------- */
 

@@ -53,6 +53,7 @@ export default function Ballot() {
             <Link to={`/entry/${e.id}`}>
               <div style={{ flex: 1 }}>
                 <div className="entry-name">{e.name}</div>
+                {e.team && <div className="entry-desc">Team: {e.team}</div>}
                 {e.description && <div className="entry-desc">{e.description}</div>}
               </div>
               <EntryBadge entry={e} criteriaCount={ballot.criteria.length} />

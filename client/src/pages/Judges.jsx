@@ -37,6 +37,7 @@ function JudgeRow({ judge, index, entries, criteria, open, onToggle }) {
                 <thead>
                   <tr>
                     <th className="col-name">Entry name</th>
+                    <th className="col-name">Team</th>
                     {criteria.map((c) => <th key={c.id} className="num">{c.name}</th>)}
                     <th className="num">Weighted</th>
                     <th className="num">Normalized</th>
@@ -48,6 +49,7 @@ function JudgeRow({ judge, index, entries, criteria, open, onToggle }) {
                     return (
                       <tr key={e.id}>
                         <td className="col-name">{e.name}</td>
+                        <td className="col-name muted">{e.team || '—'}</td>
                         {criteria.map((c) => (
                           <td key={c.id} className="num">{pj?.criteria[c.id] ?? '—'}</td>
                         ))}

@@ -34,6 +34,7 @@ function EntryRow({ entry, criteria, open, onToggle }) {
         <td className="col-name">
           <span className="judge-toggle"><Chevron open={open} /> {entry.name}</span>
         </td>
+        <td className="col-name muted">{entry.team || '—'}</td>
         <td className="num col-metric">{fmt(entry.avgWeighted)}</td>
         <td className="num col-metric">{fmtZ(entry.normalized)}</td>
         <td className="num col-metric">{entry.judgesScored}/{entry.judgesTotal}</td>
@@ -41,7 +42,7 @@ function EntryRow({ entry, criteria, open, onToggle }) {
       </tr>
       {open && (
         <tr className="judge-detail">
-          <td colSpan={6}>
+          <td colSpan={7}>
             <div className="table-wrap">
               <table className="table table--sub">
                 <thead>
@@ -81,6 +82,7 @@ function EntryRow({ entry, criteria, open, onToggle }) {
 const COLUMNS = [
   { key: 'rank', label: '#', sort: (e) => e.rank ?? Infinity, asc: true, cls: '' },
   { key: 'name', label: 'Entry name', sort: (e) => e.name.toLowerCase(), asc: true, cls: 'col-name' },
+  { key: 'team', label: 'Team', sort: (e) => (e.team || '').toLowerCase(), asc: true, cls: 'col-name' },
   { key: 'avgWeighted', label: 'Avg weighted', sort: (e) => e.avgWeighted ?? -Infinity, num: true, cls: 'col-metric' },
   { key: 'normalized', label: 'Normalized', sort: (e) => e.normalized ?? -Infinity, num: true, cls: 'col-metric' },
   { key: 'judges', label: 'Judges', sort: (e) => e.judgesScored, num: true, cls: 'col-metric' },

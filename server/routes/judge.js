@@ -26,6 +26,7 @@ function ballotFor(ctx, judge) {
       id: e.id,
       name: e.name,
       description: e.description,
+      team: e.team,
       scores: mine,
       scoredCriteria: Object.keys(mine).length,
       complete: criteria.every((c) => mine[c.id] != null),

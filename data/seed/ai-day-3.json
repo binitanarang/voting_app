@@ -8,16 +8,16 @@
       "panel": "Panel 1",
       "weights": [30, 30, 20, 20],
       "entries": [
-        { "name": "Entry A1", "description": "Short description of entry A1." },
-        { "name": "Entry A2", "description": "Short description of entry A2." },
-        { "name": "Entry A3", "description": "Short description of entry A3." },
-        { "name": "Entry A4", "description": "Short description of entry A4." },
-        { "name": "Entry A5", "description": "Short description of entry A5." },
-        { "name": "Entry A6", "description": "Short description of entry A6." },
-        { "name": "Entry A7", "description": "Short description of entry A7." },
-        { "name": "Entry A8", "description": "Short description of entry A8." },
-        { "name": "Entry A9", "description": "Short description of entry A9." },
-        { "name": "Entry A10", "description": "Short description of entry A10." }
+        { "name": "Entry A1", "team": "Team A1", "description": "Short description of entry A1." },
+        { "name": "Entry A2", "team": "Team A2", "description": "Short description of entry A2." },
+        { "name": "Entry A3", "team": "Team A3", "description": "Short description of entry A3." },
+        { "name": "Entry A4", "team": "Team A4", "description": "Short description of entry A4." },
+        { "name": "Entry A5", "team": "Team A5", "description": "Short description of entry A5." },
+        { "name": "Entry A6", "team": "Team A6", "description": "Short description of entry A6." },
+        { "name": "Entry A7", "team": "Team A7", "description": "Short description of entry A7." },
+        { "name": "Entry A8", "team": "Team A8", "description": "Short description of entry A8." },
+        { "name": "Entry A9", "team": "Team A9", "description": "Short description of entry A9." },
+        { "name": "Entry A10", "team": "Team A10", "description": "Short description of entry A10." }
       ]
     },
     {
@@ -25,15 +25,15 @@
       "panel": "Panel 2",
       "weights": [35, 20, 25, 20],
       "entries": [
-        { "name": "Entry B1", "description": "Short description of entry B1." },
-        { "name": "Entry B2", "description": "Short description of entry B2." },
-        { "name": "Entry B3", "description": "Short description of entry B3." },
-        { "name": "Entry B4", "description": "Short description of entry B4." },
-        { "name": "Entry B5", "description": "Short description of entry B5." },
-        { "name": "Entry B6", "description": "Short description of entry B6." },
-        { "name": "Entry B7", "description": "Short description of entry B7." },
-        { "name": "Entry B8", "description": "Short description of entry B8." },
-        { "name": "Entry B9", "description": "Short description of entry B9." }
+        { "name": "Entry B1", "team": "Team B1", "description": "Short description of entry B1." },
+        { "name": "Entry B2", "team": "Team B2", "description": "Short description of entry B2." },
+        { "name": "Entry B3", "team": "Team B3", "description": "Short description of entry B3." },
+        { "name": "Entry B4", "team": "Team B4", "description": "Short description of entry B4." },
+        { "name": "Entry B5", "team": "Team B5", "description": "Short description of entry B5." },
+        { "name": "Entry B6", "team": "Team B6", "description": "Short description of entry B6." },
+        { "name": "Entry B7", "team": "Team B7", "description": "Short description of entry B7." },
+        { "name": "Entry B8", "team": "Team B8", "description": "Short description of entry B8." },
+        { "name": "Entry B9", "team": "Team B9", "description": "Short description of entry B9." }
       ]
     }
   ],

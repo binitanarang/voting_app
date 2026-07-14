@@ -147,8 +147,8 @@ categories.forEach((cat, i) => {
       .run(Number(catId), criterionIds[wi], pct / 100);
   });
   cat.entries.forEach((e, ei) => {
-    db.prepare('INSERT INTO entries (category_id, name, description, position) VALUES (?, ?, ?, ?)')
-      .run(Number(catId), e.name, e.description ?? '', ei + 1);
+    db.prepare('INSERT INTO entries (category_id, name, description, team, position) VALUES (?, ?, ?, ?, ?)')
+      .run(Number(catId), e.name, e.description ?? '', e.team ?? '', ei + 1);
   });
 });
 

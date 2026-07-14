@@ -110,6 +110,7 @@ export function computeResults(data) {
         id: e.id,
         name: e.name,
         description: e.description,
+        team: e.team,
         position: e.position,
         perJudge,
         judgesScored: done.length,
@@ -149,11 +150,11 @@ export function resultsToCsv(results, criteria) {
   const num = (v, d = 4) => (v == null ? '' : v.toFixed(d));
   const lines = [];
 
-  lines.push(['category', 'rank', 'entry', 'avg_weighted', 'normalized', 'judges_scored', 'judges_total', 'min_weighted', 'max_weighted'].join(','));
+  lines.push(['category', 'rank', 'entry', 'team', 'avg_weighted', 'normalized', 'judges_scored', 'judges_total', 'min_weighted', 'max_weighted'].join(','));
   for (const cat of results) {
     for (const e of cat.entries) {
       lines.push([
-        esc(cat.name), e.rank ?? '', esc(e.name),
+        esc(cat.name), e.rank ?? '', esc(e.name), esc(e.team),
         num(e.avgWeighted), num(e.normalized),
         e.judgesScored, e.judgesTotal,
         num(e.spread?.min, 2), num(e.spread?.max, 2),

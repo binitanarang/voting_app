@@ -21,9 +21,9 @@ function fixture({ scores, judges }) {
     panels: [{ id: 1, name: 'Panel 1', category_id: 1 }],
     judges,
     entries: [
-      { id: 1, category_id: 1, name: 'E1', description: '', position: 1 },
-      { id: 2, category_id: 1, name: 'E2', description: '', position: 2 },
-      { id: 3, category_id: 1, name: 'E3', description: '', position: 3 },
+      { id: 1, category_id: 1, name: 'E1', description: '', team: 'Team One', position: 1 },
+      { id: 2, category_id: 1, name: 'E2', description: '', team: '', position: 2 },
+      { id: 3, category_id: 1, name: 'E3', description: '', team: 'Team, "Three"', position: 3 },
     ],
     scores,
   };
@@ -149,7 +149,10 @@ test('csv export includes leaderboard and raw matrix', () => {
   });
   const results = computeResults(data);
   const csv = resultsToCsv(results, data.criteria);
-  assert.match(csv, /^category,rank,entry,avg_weighted/);
-  assert.match(csv, /Cat A,1,E1,4\.0000/);
+  assert.match(csv, /^category,rank,entry,team,avg_weighted/);
+  assert.match(csv, /Cat A,1,E1,Team One,4\.0000/);
   assert.match(csv, /"A ""Quoted"" Judge"/);
+  // Team with comma and quotes survives CSV escaping; blank team stays blank.
+  assert.match(csv, /E3,"Team, ""Three"""/);
+  assert.match(csv, /Cat A,,E2,,/);
 });

@@ -60,6 +60,7 @@ export default function ScoreEntry() {
         <Link to="/" style={{ color: 'inherit' }}>← Ballot</Link> · Entry {idx + 1} of {ballot.entries.length}
       </p>
       <h1 className="page-title">{entry.name}</h1>
+      {entry.team && <p className="label">Team: {entry.team}</p>}
       {entry.description && <p className="lede">{entry.description}</p>}
 
       {ballot.locked && (
