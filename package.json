@@ -7,14 +7,12 @@
     "client"
   ],
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,yellow \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev": "node scripts/dev.mjs",
     "seed": "node server/seed.js",
     "test": "node --test \"server/**/*.test.js\"",
     "icons": "node scripts/make-icons.mjs",
     "build": "npm run build -w client",
     "start": "node server/index.js"
   },
-  "devDependencies": {
-    "concurrently": "^9.1.2"
-  }
+  "overrides": {"esbuild": "npm:esbuild-wasm@latest"}
 }

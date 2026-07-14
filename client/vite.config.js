@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  build: {target: 'esnext'},
+  esbuild: {target: 'esnext'},
+  optimizeDeps: {
+    esbuildOptions: {target: 'esnext'}
+  },
   plugins: [
     react(),
     VitePWA({
