@@ -88,9 +88,10 @@ adminRouter.get('/judges', (req, res) => {
 
 adminRouter.post('/judges', (req, res) => {
   const { db } = req.ctx;
-  const { employeeId, name, pin, panelId = null, role = 'judge' } = req.body ?? {};
+  // PIN defaults to the employee ID, same as the seeder.
+  const { employeeId, name, pin = req.body?.employeeId, panelId = null, role = 'judge' } = req.body ?? {};
   if (!employeeId?.trim() || !name?.trim() || !String(pin ?? '').trim() || String(pin).length > 64) {
-    return res.status(400).json({ error: 'employeeId, name, and pin required' });
+    return res.status(400).json({ error: 'employeeId and name required' });
   }
   if (!['judge', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   if (panelId != null && !db.prepare('SELECT id FROM panels WHERE id = ?').get(Number(panelId))) {
@@ -141,6 +142,89 @@ adminRouter.delete('/judges/:id', (req, res) => {
 });
 
 /* ---------- Categories, criteria, weights ---------- */
+
+/* New category ships usable: its own panel and equal weights across all
+   criteria, so results math works before the admin fine-tunes anything. */
+adminRouter.post('/categories', (req, res) => {
+  const { db } = req.ctx;
+  const { name } = req.body ?? {};
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  const { lastInsertRowid: catId } = db
+    .prepare('INSERT INTO categories (name, position) VALUES (?, ?)')
+    .run(name.trim(), nextPosition(db, 'categories'));
+  const panelCount = db.prepare('SELECT COUNT(*) AS n FROM panels').get().n;
+  db.prepare('INSERT INTO panels (name, category_id) VALUES (?, ?)').run(`Panel ${panelCount + 1}`, Number(catId));
+  const criteria = db.prepare('SELECT id FROM criteria').all();
+  for (const cr of criteria) {
+    db.prepare('INSERT INTO category_weights (category_id, criterion_id, weight) VALUES (?, ?, ?)')
+      .run(Number(catId), cr.id, 1 / criteria.length);
+  }
+  res.json({ id: Number(catId) });
+});
+
+/* New criterion starts at weight 0 in every category: sums stay at 100 and
+   existing complete ballots become incomplete until judges score it. */
+adminRouter.post('/criteria', (req, res) => {
+  const { db } = req.ctx;
+  const { name } = req.body ?? {};
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  const { lastInsertRowid } = db
+    .prepare('INSERT INTO criteria (name, position) VALUES (?, ?)')
+    .run(name.trim(), nextPosition(db, 'criteria'));
+  for (const cat of db.prepare('SELECT id FROM categories').all()) {
+    db.prepare('INSERT INTO category_weights (category_id, criterion_id, weight) VALUES (?, ?, ?)')
+      .run(cat.id, Number(lastInsertRowid), 0);
+  }
+  res.json({ id: Number(lastInsertRowid) });
+});
+
+/* Deleting a category removes its entries, their scores, its weights, and
+   its panel; judges on that panel keep their accounts but become unassigned. */
+adminRouter.delete('/categories/:id', (req, res) => {
+  const { db } = req.ctx;
+  const id = Number(req.params.id);
+  if (!db.prepare('SELECT id FROM categories WHERE id = ?').get(id)) {
+    return res.status(404).json({ error: 'Category not found' });
+  }
+  if (db.prepare('SELECT COUNT(*) AS n FROM categories').get().n <= 1) {
+    return res.status(400).json({ error: 'Cannot delete the last category' });
+  }
+  db.prepare('DELETE FROM scores WHERE entry_id IN (SELECT id FROM entries WHERE category_id = ?)').run(id);
+  db.prepare('DELETE FROM entries WHERE category_id = ?').run(id);
+  db.prepare('DELETE FROM category_weights WHERE category_id = ?').run(id);
+  db.prepare('UPDATE judges SET panel_id = NULL WHERE panel_id IN (SELECT id FROM panels WHERE category_id = ?)').run(id);
+  db.prepare('DELETE FROM panels WHERE category_id = ?').run(id);
+  db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+  res.json({ ok: true });
+});
+
+/* Deleting a criterion drops its scores and rescales the remaining weights
+   proportionally so each category still sums to 100. Weighted results are
+   unchanged by the rescale (weights are normalized by their sum anyway). */
+adminRouter.delete('/criteria/:id', (req, res) => {
+  const { db } = req.ctx;
+  const id = Number(req.params.id);
+  if (!db.prepare('SELECT id FROM criteria WHERE id = ?').get(id)) {
+    return res.status(404).json({ error: 'Criterion not found' });
+  }
+  if (db.prepare('SELECT COUNT(*) AS n FROM criteria').get().n <= 1) {
+    return res.status(400).json({ error: 'Cannot delete the last criterion' });
+  }
+  db.prepare('DELETE FROM scores WHERE criterion_id = ?').run(id);
+  db.prepare('DELETE FROM category_weights WHERE criterion_id = ?').run(id);
+  db.prepare('DELETE FROM criteria WHERE id = ?').run(id);
+  for (const cat of db.prepare('SELECT id FROM categories').all()) {
+    const rows = db.prepare('SELECT criterion_id, weight FROM category_weights WHERE category_id = ?').all(cat.id);
+    const total = rows.reduce((a, r) => a + r.weight, 0);
+    if (total > 0) {
+      for (const r of rows) {
+        db.prepare('UPDATE category_weights SET weight = ? WHERE category_id = ? AND criterion_id = ?')
+          .run(r.weight / total, cat.id, r.criterion_id);
+      }
+    }
+  }
+  res.json({ ok: true });
+});
 
 adminRouter.put('/categories/:id', (req, res) => {
   const { db } = req.ctx;

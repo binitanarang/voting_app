@@ -205,6 +205,14 @@ html {
 }
 .table th.col-metric, .table td.col-metric { width: 130px; white-space: nowrap; }
 .table th.col-spread, .table td.col-spread { width: 200px; padding-left: var(--s-7); }
+/* Admin tables are denser: 13px body cells at every screen size, and quieter
+   headers (lighter weight, softer rule) so they don't overpower the body. */
+.page--admin .table td { font-size: 13px; }
+.page--admin .table th {
+  font-weight: 400;
+  color: color-mix(in srgb, var(--c-umber) 65%, var(--c-ivory));
+  border-bottom-color: var(--c-hairline);
+}
 .table tr.clickable { cursor: pointer; transition: background var(--m-fast) var(--e-out); }
 .table tr.clickable:hover { background: var(--c-parchment); }
 .rank {
