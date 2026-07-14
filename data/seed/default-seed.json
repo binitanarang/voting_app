@@ -1,0 +1,197 @@
+{
+  "_readme": "AUTO-SYNCED from the live database after every admin edit — manual edits to this file are overwritten. \"pin\" fields are carried over from the previous version of this file; PINs set or reset in the app are not reflected (the database stores only hashes), so those people default back to PIN = employee ID on a reseed. Load with: npm run seed.",
+  "name": "Default",
+  "criteria": [
+    "Creativity & Boldness",
+    "Business Impact",
+    "Feasibility",
+    "Scalability"
+  ],
+  "categories": [
+    {
+      "name": "Category 1 - Best of What We've Built",
+      "panel": "Panel 1",
+      "weights": [
+        30,
+        30,
+        20,
+        20
+      ],
+      "entries": [
+        {
+          "name": "Entry A1",
+          "team": "Team A1",
+          "description": "Short description of entry A1."
+        },
+        {
+          "name": "Entry A2",
+          "team": "Team A2",
+          "description": "Short description of entry A2."
+        },
+        {
+          "name": "Entry A3",
+          "team": "Team A3",
+          "description": "Short description of entry A3."
+        },
+        {
+          "name": "Entry A4",
+          "team": "Team A4",
+          "description": "Short description of entry A4."
+        },
+        {
+          "name": "Entry A5",
+          "team": "Team A5",
+          "description": "Short description of entry A5."
+        },
+        {
+          "name": "Entry A6",
+          "team": "Team A6",
+          "description": "Short description of entry A6."
+        },
+        {
+          "name": "Entry A7",
+          "team": "Team A7",
+          "description": "Short description of entry A7."
+        },
+        {
+          "name": "Entry A8",
+          "team": "Team A8",
+          "description": "Short description of entry A8."
+        },
+        {
+          "name": "Entry A9",
+          "team": "Team A9",
+          "description": "Short description of entry A9."
+        },
+        {
+          "name": "Entry A10",
+          "team": "Team A10",
+          "description": "Short description of entry A10."
+        }
+      ]
+    },
+    {
+      "name": "Category 2 - Shark-tank Moonshot Pitches",
+      "panel": "Panel 2",
+      "weights": [
+        35,
+        20,
+        25,
+        20
+      ],
+      "entries": [
+        {
+          "name": "Entry B1",
+          "team": "Team B1",
+          "description": "Short description of entry B1."
+        },
+        {
+          "name": "Entry B2",
+          "team": "Team B2",
+          "description": "Short description of entry B2."
+        },
+        {
+          "name": "Entry B3",
+          "team": "Team B3",
+          "description": "Short description of entry B3."
+        },
+        {
+          "name": "Entry B4",
+          "team": "Team B4",
+          "description": "Short description of entry B4."
+        },
+        {
+          "name": "Entry B5",
+          "team": "Team B5",
+          "description": "Short description of entry B5."
+        },
+        {
+          "name": "Entry B6",
+          "team": "Team B6",
+          "description": "Short description of entry B6."
+        },
+        {
+          "name": "Entry B7",
+          "team": "Team B7",
+          "description": "Short description of entry B7."
+        },
+        {
+          "name": "Entry B8",
+          "team": "Team B8",
+          "description": "Short description of entry B8."
+        },
+        {
+          "name": "Entry B9",
+          "team": "Team B9",
+          "description": "Short description of entry B9."
+        }
+      ]
+    }
+  ],
+  "judges": [
+    {
+      "employeeId": "EMP001",
+      "name": "Mary Erdoes",
+      "panel": "Panel 1"
+    },
+    {
+      "employeeId": "EMP002",
+      "name": "Mike Urciuoli",
+      "panel": "Panel 1"
+    },
+    {
+      "employeeId": "EMP003",
+      "name": "Julie Harris",
+      "panel": "Panel 1"
+    },
+    {
+      "employeeId": "EMP004",
+      "name": "Andy Powell",
+      "panel": "Panel 1"
+    },
+    {
+      "employeeId": "EMP005",
+      "name": "Craig Sullivan",
+      "panel": "Panel 1"
+    },
+    {
+      "employeeId": "EMP006",
+      "name": "Dave Frame",
+      "panel": "Panel 2"
+    },
+    {
+      "employeeId": "EMP007",
+      "name": "Martin Marron",
+      "panel": "Panel 2"
+    },
+    {
+      "employeeId": "EMP008",
+      "name": "Ben Hesse",
+      "panel": "Panel 2"
+    },
+    {
+      "employeeId": "EMP009",
+      "name": "Kristian West",
+      "panel": "Panel 2"
+    },
+    {
+      "employeeId": "EMP010",
+      "name": "Rosa Rita",
+      "panel": "Panel 2"
+    }
+  ],
+  "admins": [
+    {
+      "employeeId": "ADMIN001",
+      "name": "Binita Narang"
+    },
+    {
+      "employeeId": "ADMIN002",
+      "name": "Siddhesh Mahadik"
+    },
+    {
+      "employeeId": "ADMIN003",
+      "name": "Ifrat Syeda"
+    }
+  ]
+}

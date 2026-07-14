@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, apiUrl } from '../api.js';
 
-const TABS = ['Entries', 'Judges', 'Weights', 'Locks'];
+const TABS = ['Entries', 'Judges', 'Weights', 'Setup', 'Locks'];
 
 export default function Admin() {
   const [tab, setTab] = useState('Entries');
@@ -49,6 +49,7 @@ export default function Admin() {
       {tab === 'Entries' && <EntriesTab meta={meta} run={run} />}
       {tab === 'Judges' && <JudgesTab meta={meta} judges={judges} run={run} />}
       {tab === 'Weights' && <WeightsTab meta={meta} run={run} />}
+      {tab === 'Setup' && <SetupTab meta={meta} run={run} />}
       {tab === 'Locks' && <LocksTab meta={meta} run={run} />}
     </main>
   );
@@ -67,7 +68,7 @@ function EntriesTab({ meta, run }) {
           c.entries
             .slice()
             .sort((a, b) => a.position - b.position)
-            .map((e) => ({ id: e.id, name: e.name, description: e.description, categoryId: c.id, categoryName: c.name }))
+            .map((e) => ({ id: e.id, name: e.name, description: e.description, team: e.team, categoryId: c.id, categoryName: c.name }))
         )
       )
     );
@@ -93,17 +94,18 @@ function EntriesTab({ meta, run }) {
         />
       )}
       {!editing && (
-        <button className="btn btn--small" onClick={() => setEditing({ id: null, name: '', description: '', categoryId: meta.categories[0]?.id })}>
+        <button className="btn btn--small" onClick={() => setEditing({ id: null, name: '', description: '', team: '', categoryId: meta.categories[0]?.id })}>
           + Add entry
         </button>
       )}
       <div className="table-wrap" style={{ marginTop: 'var(--s-4)' }}>
         <table className="table">
-          <thead><tr><th>Entry name</th><th>Category</th><th>Description</th><th /></tr></thead>
+          <thead><tr><th>Entry name</th><th>Team</th><th>Category</th><th>Description</th><th /></tr></thead>
           <tbody>
             {entries.map((e) => (
               <tr key={e.id}>
                 <td>{e.name}</td>
+                <td className="muted">{e.team}</td>
                 <td className="muted">{e.categoryName}</td>
                 <td className="muted" style={{ maxWidth: 320 }}>{e.description}</td>
                 <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
@@ -131,6 +133,7 @@ function EntriesTab({ meta, run }) {
 function EntryForm({ entry, categories, onSave, onCancel }) {
   const [name, setName] = useState(entry.name);
   const [description, setDescription] = useState(entry.description);
+  const [team, setTeam] = useState(entry.team ?? '');
   const [categoryId, setCategoryId] = useState(entry.categoryId);
   return (
     <div className="card" style={{ marginBottom: 'var(--s-4)' }}>
@@ -138,6 +141,10 @@ function EntryForm({ entry, categories, onSave, onCancel }) {
         <div className="field">
           <label className="label">Name</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label className="label">Team</label>
+          <input className="input" value={team} onChange={(e) => setTeam(e.target.value)} />
         </div>
         <div className="field">
           <label className="label">Category</label>
@@ -151,7 +158,7 @@ function EntryForm({ entry, categories, onSave, onCancel }) {
         <textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
       <div style={{ display: 'flex', gap: 'var(--s-3)' }}>
-        <button className="btn btn--small" disabled={!name.trim()} onClick={() => onSave({ name, description, categoryId })}>
+        <button className="btn btn--small" disabled={!name.trim()} onClick={() => onSave({ name, description, team, categoryId })}>
           Save
         </button>
         <button className="btn btn--ghost btn--small" onClick={onCancel}>Cancel</button>
@@ -322,6 +329,63 @@ function WeightsTab({ meta, run }) {
               </button>
               <span className={`num ${valid ? 'ok-text' : 'error-text'}`}>Σ {sum}%</span>
             </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/* ---------- Setup (category & panel names) ---------- */
+
+function SetupTab({ meta, run }) {
+  const [catNames, setCatNames] = useState(() => Object.fromEntries(meta.categories.map((c) => [c.id, c.name])));
+  const [panelNames, setPanelNames] = useState(() => Object.fromEntries(meta.panels.map((p) => [p.id, p.name])));
+
+  return (
+    <section>
+      <p className="lede" style={{ marginBottom: 'var(--s-5)' }}>
+        Rename categories and their judging panels. Changes apply everywhere immediately —
+        ballots, leaderboard, and exports.
+      </p>
+      {meta.categories.map((c) => {
+        const panel = meta.panels.find((p) => p.category_id === c.id);
+        const valid = catNames[c.id].trim() && (!panel || panelNames[panel.id].trim());
+        return (
+          <div className="card" key={c.id} style={{ marginBottom: 'var(--s-4)' }}>
+            <div className="form-row">
+              <div className="field">
+                <label className="label">Category name</label>
+                <input
+                  className="input"
+                  value={catNames[c.id]}
+                  onChange={(e) => setCatNames({ ...catNames, [c.id]: e.target.value })}
+                />
+              </div>
+              {panel && (
+                <div className="field">
+                  <label className="label">Panel name</label>
+                  <input
+                    className="input"
+                    value={panelNames[panel.id]}
+                    onChange={(e) => setPanelNames({ ...panelNames, [panel.id]: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+            <button
+              className="btn btn--small"
+              disabled={!valid}
+              style={{ marginTop: 'var(--s-3)' }}
+              onClick={() =>
+                run(async () => {
+                  await api(`/api/admin/categories/${c.id}`, { method: 'PUT', body: { name: catNames[c.id] } });
+                  if (panel) await api(`/api/admin/panels/${panel.id}`, { method: 'PUT', body: { name: panelNames[panel.id] } });
+                }, `Saved ${catNames[c.id]}`)
+              }
+            >
+              Save
+            </button>
           </div>
         );
       })}

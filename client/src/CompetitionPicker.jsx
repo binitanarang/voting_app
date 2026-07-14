@@ -3,7 +3,9 @@ import { apiGlobal } from './api.js';
 
 /* Landing page at / — lists the competitions this server hosts. Links are
    full page loads on purpose: the app re-boots with the competition's base
-   path. Redirects automatically when there's exactly one competition. */
+   path. Redirects automatically to the "default-seed" competition when it
+   exists, or when there's exactly one competition; the picker only renders
+   when neither applies. */
 export default function CompetitionPicker() {
   const [competitions, setCompetitions] = useState(null);
   const [error, setError] = useState(null);
@@ -11,7 +13,10 @@ export default function CompetitionPicker() {
   useEffect(() => {
     apiGlobal('/api/competitions')
       .then((d) => {
-        if (d.competitions.length === 1) {
+        const def = d.competitions.find((c) => c.dir === 'default-seed');
+        if (def) {
+          window.location.replace(`/${def.dir}/`);
+        } else if (d.competitions.length === 1) {
           window.location.replace(`/${d.competitions[0].dir}/`);
         } else {
           setCompetitions(d.competitions);

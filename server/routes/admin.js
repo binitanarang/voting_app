@@ -1,9 +1,27 @@
 import { Router } from 'express';
 import { requireAdmin, hashPin } from '../auth.js';
 import { exportSnapshot } from '../export.js';
+import { syncSeedJson } from '../seedSync.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
+
+/* Every successful admin mutation rewrites data/seed/<competition>.json so
+   the seed file tracks the live setup. Runs after the response is sent. */
+adminRouter.use((req, res, next) => {
+  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    res.on('finish', () => {
+      if (res.statusCode < 400) {
+        try {
+          syncSeedJson(req.ctx);
+        } catch (err) {
+          console.error(`seed sync failed for ${req.ctx.name}: ${err.message}`);
+        }
+      }
+    });
+  }
+  next();
+});
 
 const nextPosition = (db, table, where = '', params = []) =>
   (db.prepare(`SELECT COALESCE(MAX(position), 0) + 1 AS p FROM ${table} ${where}`).get(...params)).p;
@@ -12,13 +30,13 @@ const nextPosition = (db, table, where = '', params = []) =>
 
 adminRouter.post('/entries', (req, res) => {
   const { db } = req.ctx;
-  const { name, description = '', categoryId } = req.body ?? {};
+  const { name, description = '', team = '', categoryId } = req.body ?? {};
   if (!name?.trim() || !db.prepare('SELECT id FROM categories WHERE id = ?').get(Number(categoryId))) {
     return res.status(400).json({ error: 'name and valid categoryId required' });
   }
   const { lastInsertRowid } = db
-    .prepare('INSERT INTO entries (category_id, name, description, position) VALUES (?, ?, ?, ?)')
-    .run(Number(categoryId), name.trim(), String(description), nextPosition(db, 'entries', 'WHERE category_id = ?', [Number(categoryId)]));
+    .prepare('INSERT INTO entries (category_id, name, description, team, position) VALUES (?, ?, ?, ?, ?)')
+    .run(Number(categoryId), name.trim(), String(description), String(team).trim(), nextPosition(db, 'entries', 'WHERE category_id = ?', [Number(categoryId)]));
   res.json({ id: Number(lastInsertRowid) });
 });
 
@@ -26,12 +44,12 @@ adminRouter.put('/entries/:id', (req, res) => {
   const { db } = req.ctx;
   const entry = db.prepare('SELECT * FROM entries WHERE id = ?').get(Number(req.params.id));
   if (!entry) return res.status(404).json({ error: 'Entry not found' });
-  const { name = entry.name, description = entry.description, categoryId = entry.category_id } = req.body ?? {};
+  const { name = entry.name, description = entry.description, team = entry.team, categoryId = entry.category_id } = req.body ?? {};
   if (!db.prepare('SELECT id FROM categories WHERE id = ?').get(Number(categoryId))) {
     return res.status(400).json({ error: 'Invalid categoryId' });
   }
-  db.prepare('UPDATE entries SET name = ?, description = ?, category_id = ? WHERE id = ?')
-    .run(String(name).trim(), String(description), Number(categoryId), entry.id);
+  db.prepare('UPDATE entries SET name = ?, description = ?, team = ?, category_id = ? WHERE id = ?')
+    .run(String(name).trim(), String(description), String(team).trim(), Number(categoryId), entry.id);
   res.json({ ok: true });
 });
 
@@ -130,6 +148,15 @@ adminRouter.put('/categories/:id', (req, res) => {
   if (!name?.trim()) return res.status(400).json({ error: 'name required' });
   const r = db.prepare('UPDATE categories SET name = ? WHERE id = ?').run(name.trim(), Number(req.params.id));
   if (!r.changes) return res.status(404).json({ error: 'Category not found' });
+  res.json({ ok: true });
+});
+
+adminRouter.put('/panels/:id', (req, res) => {
+  const { db } = req.ctx;
+  const { name } = req.body ?? {};
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  const r = db.prepare('UPDATE panels SET name = ? WHERE id = ?').run(name.trim(), Number(req.params.id));
+  if (!r.changes) return res.status(404).json({ error: 'Panel not found' });
   res.json({ ok: true });
 });
 

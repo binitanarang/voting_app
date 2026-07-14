@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
-import { useAuth, CompetitionName } from '../App.jsx';
+import { useAuth } from '../App.jsx';
 
 export default function Login() {
   const { setUser } = useAuth();
@@ -30,7 +30,7 @@ export default function Login() {
     <main className="page page--narrow">
       <p className="label">Sign-in</p>
       <h1 className="page-title">
-        <CompetitionName />
+        Voting <em>App</em>
       </h1>
       <p className="lede">Enter your employee ID and PIN.</p>
 
