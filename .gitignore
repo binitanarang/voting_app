@@ -1,6 +1,7 @@
 node_modules/
-data/*
-!data/seed/
 client/dist/
 client/dev-dist/
 .DS_Store
+data/*/session-secret
+*.db-wal
+*.db-shm
