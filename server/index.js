@@ -1,8 +1,9 @@
 import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
-import { ROOT, getCompetition, listCompetitions } from './db.js';
+import { ROOT, DB_DRIVER, getCompetition, listCompetitions } from './db.js';
 import { attachJudge, requireAuth, handleLogin, handleLogout, publicJudge } from './auth.js';
+import { asyncHandler } from './asyncHandler.js';
 import { judgeRouter } from './routes/judge.js';
 import { resultsRouter } from './routes/results.js';
 import { adminRouter } from './routes/admin.js';
@@ -12,15 +13,15 @@ app.disable('x-powered-by');
 app.use(express.json());
 
 /* Public: competitions on this server, for the landing page. */
-app.get('/api/competitions', (_req, res) => res.json({ competitions: listCompetitions() }));
+app.get('/api/competitions', asyncHandler(async (_req, res) => res.json({ competitions: await listCompetitions() })));
 
-/* Per-competition API — the URL path segment IS the data directory name:
-   /ai-day-3/api/... → data/ai-day-3/ */
+/* Per-competition API — the URL path segment IS the data directory name
+   (SQLite) or schema name (Postgres): /ai-day-3/api/... → data/ai-day-3/ */
 const api = express.Router();
-api.get('/config', (req, res) => res.json({ name: req.ctx.getSetting('competition_name', req.ctx.name) }));
+api.get('/config', asyncHandler(async (req, res) => res.json({ name: await req.ctx.getSetting('competition_name', req.ctx.name) })));
 api.post('/login', handleLogin);
 api.post('/logout', handleLogout);
-api.get('/me', requireAuth, (req, res) => res.json({ user: publicJudge(req.ctx, req.judge) }));
+api.get('/me', requireAuth, asyncHandler(async (req, res) => res.json({ user: await publicJudge(req.ctx, req.judge) })));
 api.use(judgeRouter);
 api.use(resultsRouter);
 api.use('/admin', adminRouter);
@@ -28,12 +29,12 @@ api.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 
 app.use(
   '/:comp/api',
-  (req, res, next) => {
-    const ctx = getCompetition(req.params.comp);
+  asyncHandler(async (req, res, next) => {
+    const ctx = await getCompetition(req.params.comp);
     if (!ctx) return res.status(404).json({ error: `No competition at /${req.params.comp}` });
     req.ctx = ctx;
     next();
-  },
+  }),
   attachJudge,
   api
 );
@@ -51,10 +52,17 @@ if (fs.existsSync(dist)) {
   });
 }
 
+/* Rejected async handlers land here via asyncHandler. */
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 const port = Number(process.env.PORT ?? 3000);
-app.listen(port, () => {
-  const comps = listCompetitions();
-  console.log(`Voting server on http://localhost:${port}${fs.existsSync(dist) ? '' : ' (API only — run client dev server)'}`);
+app.listen(port, async () => {
+  const comps = await listCompetitions();
+  console.log(`Voting server on http://localhost:${port} [${DB_DRIVER}]${fs.existsSync(dist) ? '' : ' (API only — run client dev server)'}`);
   if (comps.length) {
     for (const c of comps) console.log(`  /${c.dir}  →  "${c.name}"`);
   } else {

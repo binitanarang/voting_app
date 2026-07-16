@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SEED_DIR } from './paths.js';
 
-export function syncSeedJson(ctx) {
+export async function syncSeedJson(ctx) {
   const { db } = ctx;
   const seedPath = path.join(SEED_DIR, `${ctx.name}.json`);
 
@@ -22,10 +22,10 @@ export function syncSeedJson(ctx) {
       .map((p) => [String(p.employeeId), String(p.pin)])
   );
 
-  const criteria = db.prepare('SELECT * FROM criteria ORDER BY position').all();
-  const cats = db.prepare('SELECT * FROM categories ORDER BY position').all();
-  const panels = db.prepare('SELECT * FROM panels').all();
-  const people = db.prepare('SELECT * FROM judges').all();
+  const criteria = await db.prepare('SELECT * FROM criteria ORDER BY position').all();
+  const cats = await db.prepare('SELECT * FROM categories ORDER BY position').all();
+  const panels = await db.prepare('SELECT * FROM panels').all();
+  const people = await db.prepare('SELECT * FROM judges').all();
   const panelName = Object.fromEntries(panels.map((p) => [p.id, p.name]));
 
   const person = (j) => {
@@ -34,8 +34,9 @@ export function syncSeedJson(ctx) {
     return p;
   };
 
-  const categories = cats.map((c) => {
-    const stored = db.prepare('SELECT criterion_id, weight FROM category_weights WHERE category_id = ?').all(c.id);
+  const categories = [];
+  for (const c of cats) {
+    const stored = await db.prepare('SELECT criterion_id, weight FROM category_weights WHERE category_id = ?').all(c.id);
     const byCriterion = Object.fromEntries(stored.map((w) => [w.criterion_id, w.weight]));
     const weights = criteria.map((cr) => Math.round((byCriterion[cr.id] ?? 0) * 10000) / 100);
     // Rounding drift must not break the seeder's sum-to-100 check.
@@ -43,23 +44,24 @@ export function syncSeedJson(ctx) {
     if (weights.length && Math.abs(drift) < 1) {
       weights[weights.length - 1] = Math.round((weights[weights.length - 1] + drift) * 100) / 100;
     }
-    return {
+    const entries = await db.prepare('SELECT * FROM entries WHERE category_id = ? ORDER BY position').all(c.id);
+    categories.push({
       name: c.name,
       panel: panels.find((p) => p.category_id === c.id)?.name ?? '',
       weights,
-      entries: db.prepare('SELECT * FROM entries WHERE category_id = ? ORDER BY position').all(c.id)
-        .map((e) => ({ name: e.name, team: e.team, description: e.description })),
-    };
-  });
+      entries: entries.map((e) => ({ name: e.name, team: e.team, description: e.description })),
+    });
+  }
 
   const out = {
     _readme: 'AUTO-SYNCED from the live database after every admin edit — manual edits to this file are overwritten. "pin" fields are carried over from the previous version of this file; PINs set or reset in the app are not reflected (the database stores only hashes), so those people default back to PIN = employee ID on a reseed. Load with: npm run seed.',
-    name: ctx.getSetting('competition_name', ctx.name),
+    name: await ctx.getSetting('competition_name', ctx.name),
     criteria: criteria.map((c) => c.name),
     categories,
     judges: people.filter((j) => j.role === 'judge').map((j) => ({ ...person(j), panel: panelName[j.panel_id] ?? '' })),
     admins: people.filter((j) => j.role === 'admin').map(person),
   };
 
+  fs.mkdirSync(SEED_DIR, { recursive: true });
   fs.writeFileSync(seedPath, JSON.stringify(out, null, 2) + '\n');
 }

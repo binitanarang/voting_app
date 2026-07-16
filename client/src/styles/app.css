@@ -314,7 +314,7 @@ html {
   transition: background var(--m-fast) var(--e-out);
 }
 .entry-list a:hover { text-decoration: none; background: var(--c-parchment); }
-.entry-list .entry-name { font-size: 18px; flex: 1; }
+.entry-list .entry-name { font-size: 15px; flex: 1; }
 .entry-list .entry-desc { color: var(--c-umber); font-size: 13px; }
 
 /* ---------- Notices ---------- */

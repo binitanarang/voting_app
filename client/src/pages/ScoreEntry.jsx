@@ -67,12 +67,15 @@ export default function ScoreEntry() {
         <div className="notice notice--warn">Scoring is closed — scores are read-only.</div>
       )}
 
+      <p className="label" style={{ marginTop: 'var(--s-4)', color: 'var(--c-ochre)' }}>
+        1 = Limited · 3 = Solid · 5 = Standout
+      </p>
+
       <div style={{ margin: 'var(--s-5) 0' }}>
         {ballot.criteria.map((c) => (
           <div className="criterion" key={c.id}>
             <div className="criterion__head">
               <span className="label" style={{ color: 'var(--c-ink)' }}>{c.name}</span>
-              <span className="num muted">{entry.scores[c.id] ?? '—'}</span>
             </div>
             <ScorePicker
               value={entry.scores[c.id] ?? null}

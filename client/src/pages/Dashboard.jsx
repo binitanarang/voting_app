@@ -80,7 +80,7 @@ function EntryRow({ entry, criteria, open, onToggle }) {
 }
 
 const COLUMNS = [
-  { key: 'rank', label: '#', sort: (e) => e.rank ?? Infinity, asc: true, cls: '' },
+  { key: 'rank', label: 'Rank', sort: (e) => e.rank ?? Infinity, asc: true, cls: '' },
   { key: 'name', label: 'Entry name', sort: (e) => e.name.toLowerCase(), asc: true, cls: 'col-name' },
   { key: 'team', label: 'Team', sort: (e) => (e.team || '').toLowerCase(), asc: true, cls: 'col-name' },
   { key: 'avgWeighted', label: 'Avg weighted', sort: (e) => e.avgWeighted ?? -Infinity, num: true, cls: 'col-metric' },

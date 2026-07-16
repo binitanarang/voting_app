@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { asyncHandler } from './asyncHandler.js';
 
 const SESSION_DAYS = 1;
 const MAX_ATTEMPTS = 5;
@@ -28,13 +29,13 @@ export function makeToken(ctx, judge) {
   return `${payload}.${sign(ctx, payload, judge.pin_hash)}`;
 }
 
-export function judgeFromToken(ctx, token) {
+export async function judgeFromToken(ctx, token) {
   if (!token) return null;
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [id, expires, sig] = parts;
   if (Number(expires) < Date.now()) return null;
-  const judge = ctx.db.prepare('SELECT * FROM judges WHERE id = ?').get(Number(id));
+  const judge = await ctx.db.prepare('SELECT * FROM judges WHERE id = ?').get(Number(id));
   if (!judge) return null;
   const expected = sign(ctx, `${id}.${expires}`, judge.pin_hash);
   const a = Buffer.from(sig);
@@ -53,10 +54,10 @@ function parseCookies(req) {
 }
 
 /* Requires req.ctx (set by the competition resolver in index.js). */
-export function attachJudge(req, _res, next) {
-  req.judge = judgeFromToken(req.ctx, parseCookies(req).session);
+export const attachJudge = asyncHandler(async (req, _res, next) => {
+  req.judge = await judgeFromToken(req.ctx, parseCookies(req).session);
   next();
-}
+});
 
 export function requireAuth(req, res, next) {
   if (!req.judge) return res.status(401).json({ error: 'Not logged in' });
@@ -69,9 +70,9 @@ export function requireAdmin(req, res, next) {
   next();
 }
 
-export function publicJudge(ctx, judge) {
+export async function publicJudge(ctx, judge) {
   const panel = judge.panel_id
-    ? ctx.db.prepare('SELECT p.id, p.name, p.category_id FROM panels p WHERE p.id = ?').get(judge.panel_id)
+    ? await ctx.db.prepare('SELECT p.id, p.name, p.category_id FROM panels p WHERE p.id = ?').get(judge.panel_id)
     : null;
   return {
     id: judge.id,
@@ -88,7 +89,7 @@ const cookiePath = (ctx) => `/${ctx.name}`;
 const sessionCookie = (ctx, token) =>
   `session=${token}; Path=${cookiePath(ctx)}; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}`;
 
-export function handleLogin(req, res) {
+export const handleLogin = asyncHandler(async (req, res) => {
   const ctx = req.ctx;
   const employeeId = String(req.body?.employeeId ?? '').trim();
   const pin = String(req.body?.pin ?? '').trim();
@@ -97,24 +98,26 @@ export function handleLogin(req, res) {
   }
 
   const cutoff = Date.now() - ATTEMPT_WINDOW_MS;
-  ctx.db.prepare('DELETE FROM login_attempts WHERE attempted_at < ?').run(cutoff);
-  const { n } = ctx.db
+  await ctx.db.prepare('DELETE FROM login_attempts WHERE attempted_at < ?').run(cutoff);
+  const { n } = await ctx.db
     .prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE employee_id = ? AND attempted_at >= ?')
     .get(employeeId, cutoff);
   if (n >= MAX_ATTEMPTS) {
     return res.status(429).json({ error: 'Too many failed attempts. Try again in 15 minutes.' });
   }
 
-  const judge = ctx.db.prepare('SELECT * FROM judges WHERE employee_id = ?').get(employeeId);
+  const judge = await ctx.db.prepare('SELECT * FROM judges WHERE employee_id = ?').get(employeeId);
   if (!judge || !verifyPin(pin, judge.pin_hash)) {
-    ctx.db.prepare('INSERT INTO login_attempts (employee_id, attempted_at) VALUES (?, ?)').run(employeeId, Date.now());
+    await ctx.db
+      .prepare('INSERT INTO login_attempts (employee_id, attempted_at) VALUES (?, ?)')
+      .run(employeeId, Date.now());
     return res.status(401).json({ error: 'Invalid employee ID or PIN' });
   }
 
-  ctx.db.prepare('DELETE FROM login_attempts WHERE employee_id = ?').run(employeeId);
+  await ctx.db.prepare('DELETE FROM login_attempts WHERE employee_id = ?').run(employeeId);
   res.setHeader('Set-Cookie', sessionCookie(ctx, makeToken(ctx, judge)));
-  res.json({ user: publicJudge(ctx, judge) });
-}
+  res.json({ user: await publicJudge(ctx, judge) });
+});
 
 export function handleLogout(req, res) {
   res.setHeader('Set-Cookie', `session=; Path=${cookiePath(req.ctx)}; HttpOnly; SameSite=Lax; Max-Age=0`);

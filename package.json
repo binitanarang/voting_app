@@ -9,10 +9,13 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "seed": "node server/seed.js",
+    "pg:setup": "node scripts/pg-setup.mjs",
     "test": "node --test \"server/**/*.test.js\"",
     "icons": "node scripts/make-icons.mjs",
     "build": "npm run build -w client",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "start:sqlite": "bash scripts/start-sqlite.sh",
+    "start:postgres": "bash scripts/start-postgres.sh"
   },
   "overrides": {"esbuild": "npm:esbuild-wasm@latest"}
 }

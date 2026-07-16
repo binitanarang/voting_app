@@ -1,6 +1,8 @@
 /* Seeds a competition from data/seed/<competition>.json into
-   data/<competition>/ — the seed file's name IS the competition's directory
-   and URL path (data/seed/ai-day-3.json → data/ai-day-3 → /ai-day-3).
+   data/<competition>/ (SQLite, the default) or into the Postgres schema
+   "<competition>" (when DATABASE_URL is set) — the seed file's name IS the
+   competition's directory/schema and URL path
+   (data/seed/ai-day-3.json → data/ai-day-3 → /ai-day-3).
 
    Interactive (just run `npm run seed`): pick a seed file; if that
    competition already exists you confirm the wipe by retyping its name, and
@@ -16,7 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { ROOT, SEED_DIR, DIR_NAME_RE, competitionDir } from './paths.js';
-import { openCompetition } from './db.js';
+import { DB_DRIVER, openCompetition, competitionExists, wipeCompetition, closeDbPools } from './db.js';
 import { exportSnapshot } from './export.js';
 import { hashPin } from './auth.js';
 
@@ -43,11 +45,11 @@ if (!configPath) {
     configPath = path.join(SEED_DIR, options[0]);
   } else {
     console.log('Competitions to seed (file name = directory = URL path):');
-    options.forEach((f, i) => {
-      const dir = path.basename(f, '.json');
-      const exists = fs.existsSync(path.join(competitionDir(dir), 'voting.db'));
-      console.log(`  [${i + 1}] ${f} → /${dir}${exists ? '  (EXISTS — reseeding WIPES its scores; a safety export is taken first)' : ''}`);
-    });
+    for (let i = 0; i < options.length; i++) {
+      const dir = path.basename(options[i], '.json');
+      const exists = await competitionExists(dir);
+      console.log(`  [${i + 1}] ${options[i]} → /${dir}${exists ? '  (EXISTS — reseeding WIPES its scores; a safety export is taken first)' : ''}`);
+    }
     const pick = await rl.question(`Which one? [1-${options.length}, default 1] `);
     const n = pick.trim() === '' ? 1 : Number(pick);
     if (!Number.isInteger(n) || n < 1 || n > options.length) die('Invalid choice.');
@@ -65,34 +67,38 @@ if (!DIR_NAME_RE.test(dirName)) {
 const config = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
 const competitionName = config.name ?? dirName;
 const dataDir = competitionDir(dirName);
-const dbPath = path.join(dataDir, 'voting.db');
 const dirLabel = path.relative(ROOT, dataDir);
-console.log(`Competition: "${competitionName}" → ${dirLabel} → /${dirName}`);
+const dbLabel = DB_DRIVER === 'postgres' ? `Postgres schema "${dirName}"` : dirLabel;
+console.log(`Competition: "${competitionName}" → ${dbLabel} → /${dirName}  [${DB_DRIVER}]`);
 
 /* ---------- 2. Wipe confirmation + safety export ---------- */
 
-if (fs.existsSync(dbPath)) {
+if (await competitionExists(dirName)) {
   if (!reset && !rl) {
-    die(`${dirLabel} already has a database. Re-run with --reset to wipe it (deletes all scores!).`);
+    die(`${dbLabel} already has a database. Re-run with --reset to wipe it (deletes all scores!).`);
   }
   if (!reset) {
     const typed = await rl.question(
-      `${dirLabel} already has a database. Wiping deletes ALL its scores.\nType the competition name ("${dirName}") to confirm: `
+      `${dbLabel} already has a database. Wiping deletes ALL its scores.\nType the competition name ("${dirName}") to confirm: `
     );
     if (typed.trim() !== dirName) die('Confirmation did not match — nothing was changed.');
   }
 
   try {
-    const oldCtx = openCompetition(dirName);
-    const { files } = exportSnapshot(oldCtx, 'pre-reseed');
-    oldCtx.db.close();
+    const oldCtx = await openCompetition(dirName);
+    const { files } = await exportSnapshot(oldCtx, 'pre-reseed');
+    await oldCtx.db.close();
     console.log(`Safety export saved to ${dirLabel}/exports/: ${files.join(', ')}`);
   } catch (err) {
     console.warn(`Warning: safety export failed (${err.message}) — continuing with wipe.`);
   }
 
-  for (const suffix of ['', '-wal', '-shm']) fs.rmSync(dbPath + suffix, { force: true });
-  console.log('Existing database removed (session-secret and exports/ kept).');
+  await wipeCompetition(dirName);
+  console.log(
+    DB_DRIVER === 'postgres'
+      ? 'Existing schema dropped (exports/ on disk kept).'
+      : 'Existing database removed (session-secret and exports/ kept).'
+  );
 }
 
 rl?.close();
@@ -120,37 +126,40 @@ if (badPins.length) die(`Invalid PINs for: ${badPins.map((p) => p.employeeId).jo
 
 /* ---------- 4. Load ---------- */
 
-const ctx = openCompetition(dirName);
+const ctx = await openCompetition(dirName);
 const { db } = ctx;
 
-ctx.setSetting('competition_name', competitionName);
+await ctx.setSetting('competition_name', competitionName);
 
-const criterionIds = criteria.map((name, i) => {
-  const { lastInsertRowid } = db
+const criterionIds = [];
+for (let i = 0; i < criteria.length; i++) {
+  const { lastInsertRowid } = await db
     .prepare('INSERT INTO criteria (name, position) VALUES (?, ?)')
-    .run(name, i + 1);
-  return Number(lastInsertRowid);
-});
+    .run(criteria[i], i + 1);
+  criterionIds.push(Number(lastInsertRowid));
+}
 
 const panelIdByName = {};
-categories.forEach((cat, i) => {
-  const { lastInsertRowid: catId } = db
+for (let i = 0; i < categories.length; i++) {
+  const cat = categories[i];
+  const { lastInsertRowid: catId } = await db
     .prepare('INSERT INTO categories (name, position) VALUES (?, ?)')
     .run(cat.name, i + 1);
-  const { lastInsertRowid: panelId } = db
+  const { lastInsertRowid: panelId } = await db
     .prepare('INSERT INTO panels (name, category_id) VALUES (?, ?)')
     .run(cat.panel, Number(catId));
   panelIdByName[cat.panel] = Number(panelId);
 
-  cat.weights.forEach((pct, wi) => {
-    db.prepare('INSERT INTO category_weights (category_id, criterion_id, weight) VALUES (?, ?, ?)')
-      .run(Number(catId), criterionIds[wi], pct / 100);
-  });
-  cat.entries.forEach((e, ei) => {
-    db.prepare('INSERT INTO entries (category_id, name, description, team, position) VALUES (?, ?, ?, ?, ?)')
+  for (let wi = 0; wi < cat.weights.length; wi++) {
+    await db.prepare('INSERT INTO category_weights (category_id, criterion_id, weight) VALUES (?, ?, ?)')
+      .run(Number(catId), criterionIds[wi], cat.weights[wi] / 100);
+  }
+  for (let ei = 0; ei < cat.entries.length; ei++) {
+    const e = cat.entries[ei];
+    await db.prepare('INSERT INTO entries (category_id, name, description, team, position) VALUES (?, ?, ?, ?, ?)')
       .run(Number(catId), e.name, e.description ?? '', e.team ?? '', ei + 1);
-  });
-});
+  }
+}
 
 const insertJudge = db.prepare(
   'INSERT INTO judges (employee_id, name, pin_hash, panel_id, role) VALUES (?, ?, ?, ?, ?)'
@@ -158,13 +167,13 @@ const insertJudge = db.prepare(
 for (const j of judges) {
   const panelId = panelIdByName[j.panel];
   if (!panelId) die(`Judge ${j.employeeId}: unknown panel "${j.panel}".`);
-  insertJudge.run(j.employeeId, j.name, hashPin(pinFor(j)), panelId, 'judge');
+  await insertJudge.run(j.employeeId, j.name, hashPin(pinFor(j)), panelId, 'judge');
 }
 for (const a of admins) {
-  insertJudge.run(a.employeeId, a.name, hashPin(pinFor(a)), null, 'admin');
+  await insertJudge.run(a.employeeId, a.name, hashPin(pinFor(a)), null, 'admin');
 }
 
-console.log(`\nSeeded "${competitionName}" into ${dirLabel}:`, JSON.stringify({
+console.log(`\nSeeded "${competitionName}" into ${dbLabel}:`, JSON.stringify({
   categories: categories.length,
   criteria: criteria.length,
   entries: categories.reduce((n, c) => n + c.entries.length, 0),
@@ -172,3 +181,6 @@ console.log(`\nSeeded "${competitionName}" into ${dirLabel}:`, JSON.stringify({
   admins: admins.length,
 }));
 console.log(`\nLive at: http://localhost:3000/${dirName}  (npm start serves every competition)`);
+
+await ctx.db.close();
+await closeDbPools();

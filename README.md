@@ -17,8 +17,11 @@ http://host:3000/                →  landing page listing competitions
 
 - **Frontend:** Vite + React SPA styled with the Mara design system
   (`client/src/styles/mara.css`) — no CSS framework.
-- **Backend:** Express + SQLite (Node's built-in `node:sqlite`, so there are no
-  native-module builds). One process serves every competition and the SPA.
+- **Backend:** Express, with two interchangeable storage backends. Default is
+  SQLite (Node's built-in `node:sqlite`, so there are no native-module builds);
+  setting `DATABASE_URL` switches the same server to Postgres for hosts without
+  a persistent filesystem (see [Running on Postgres](#running-on-postgres-aws-container)).
+  One process serves every competition and the SPA.
 - **Auth:** employee ID + PIN (scrypt-hashed; by default a person's PIN is
   their employee ID — set a `pin` per person in the seed file to override),
   1-day session cookie scoped to the competition's path, failed attempts
@@ -116,15 +119,45 @@ Cloudflare Tunnel or reverse proxy — judges get
 Each `data/<name>/` directory is a self-contained competition (`voting.db`,
 `session-secret`, `exports/`). Copying it is a full backup.
 
-## Moving to AWS later
+## Running on Postgres (AWS container)
 
-The app is a plain Node process with SQLite files, so migration is a copy:
+SQLite needs a persistent local disk, which the AWS container doesn't have —
+so the server also runs on Postgres. **The switch is one environment
+variable:** when `DATABASE_URL` is set, the server, seeder, and export CLI all
+use Postgres; without it they use the SQLite files exactly as before. None of
+the SQLite code goes away, and local dev needs no Postgres install.
 
-1. Provision a small EC2 instance (or Lightsail) with Node 22+.
-2. Copy the repo and the `data/` directory (preserves scores *and* keeps
-   judges' sessions valid).
-3. `npm install && npm run build && PORT=3000 npm start` behind nginx/ALB with
-   HTTPS terminating at the proxy.
+Each competition becomes one Postgres **schema** in the shared database
+(mirroring one-directory-per-competition): `/ai-day-3` ↔ schema `"ai-day-3"`.
+The DDL lives in `server/schema.pg.sql`; the per-competition session secret
+moves into the `settings` table (no disk needed).
+
+One-time / per-deploy setup — creates the database and the tables
+(idempotent, safe to re-run):
+
+```bash
+export DATABASE_URL=postgres://user:pass@host:5432/voting_app
+npm run pg:setup                       # schemas for every data/seed/*.json
+npm run pg:setup -- ai-day-3           # …or just the ones you name
+```
+
+Then load data and run:
+
+```bash
+npm run seed -- --config data/seed/ai-day-3.json --reset   # --reset: pg:setup already created the (empty) tables
+npm run build && PORT=3000 npm start                        # logs [postgres] on startup
+```
+
+(You can also skip `pg:setup` for the schemas — seeding creates its
+competition's schema and tables on its own; `pg:setup` is still the way to
+create the *database* and to provision tables without seed data.)
+
+Notes for the container: lock/reseed archives still write CSVs to
+`data/<name>/exports/` on the container's (ephemeral) disk — scores themselves
+are safe in Postgres, and `results.csv` can always be re-downloaded from the
+dashboard. The Postgres snapshot on lock is CSV-only (there's no database file
+to copy). Seed-file auto-sync also writes to the ephemeral disk, so keep seed
+JSONs in git as the source of truth.
 
 ## Rounds (semi-finals → finals)
 
