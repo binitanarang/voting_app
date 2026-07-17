@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, saveScore } from '../api.js';
 import ScorePicker from '../components/ScorePicker.jsx';
@@ -10,6 +10,15 @@ export default function ScoreEntry() {
   const [ballot, setBallot] = useState(null);
   const [error, setError] = useState(null);
   const [saveState, setSaveState] = useState(null); // 'saving' | 'saved' | 'queued' | error text
+  const requestCountRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     api('/api/ballot').then(setBallot).catch((e) => setError(e.message));
@@ -26,6 +35,9 @@ export default function ScoreEntry() {
   const next = ballot.entries[idx + 1];
 
   const setScore = async (criterionId, score) => {
+    requestCountRef.current += 1;
+    const currentRequest = requestCountRef.current;
+
     // Optimistic update; server response (or the queue) reconciles.
     setBallot((b) => ({
       ...b,
@@ -43,13 +55,19 @@ export default function ScoreEntry() {
     setSaveState('saving');
     try {
       const res = await saveScore(entryId, criterionId, score);
-      if (res.ballot) setBallot(res.ballot);
-      setSaveState(res.status);
+      if (currentRequest === requestCountRef.current && mountedRef.current) {
+        if (res.ballot) setBallot(res.ballot);
+        setSaveState(res.status);
+      }
     } catch (err) {
-      setSaveState(err.message);
-      if (err.locked || err.status === 403) {
-        const fresh = await api('/api/ballot').catch(() => null);
-        if (fresh) setBallot(fresh);
+      if (currentRequest === requestCountRef.current && mountedRef.current) {
+        setSaveState(err.message);
+        if (err.locked || err.status === 403) {
+          const fresh = await api('/api/ballot').catch(() => null);
+          if (fresh && currentRequest === requestCountRef.current && mountedRef.current) {
+            setBallot(fresh);
+          }
+        }
       }
     }
   };
