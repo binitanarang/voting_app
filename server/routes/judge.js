@@ -96,7 +96,6 @@ judgeRouter.put('/scores/:entryId', asyncHandler(async (req, res) => {
     await upsert.run(judge.id, entry.id, criterionId, val, now);
   }
 
-  #res.json({ ok: true, ballot: await ballotFor(ctx, judge) });
   res.json({ ok: true });
 }));
 
