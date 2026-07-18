@@ -103,7 +103,7 @@ adminRouter.post('/judges', asyncHandler(async (req, res) => {
   try {
     const { lastInsertRowid } = await db
       .prepare('INSERT INTO judges (employee_id, name, pin_hash, panel_id, role) VALUES (?, ?, ?, ?, ?)')
-      .run(employeeId.trim(), name.trim(), hashPin(String(pin)), panelId == null ? null : Number(panelId), role);
+      .run(employeeId.trim().toUpperCase(), name.trim(), hashPin(String(pin)), panelId == null ? null : Number(panelId), role);
     res.json({ id: Number(lastInsertRowid) });
   } catch {
     res.status(400).json({ error: 'Employee ID already exists' });

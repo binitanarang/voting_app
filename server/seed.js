@@ -167,10 +167,10 @@ const insertJudge = db.prepare(
 for (const j of judges) {
   const panelId = panelIdByName[j.panel];
   if (!panelId) die(`Judge ${j.employeeId}: unknown panel "${j.panel}".`);
-  await insertJudge.run(j.employeeId, j.name, hashPin(pinFor(j)), panelId, 'judge');
+  await insertJudge.run(String(j.employeeId).trim().toUpperCase(), j.name, hashPin(pinFor(j)), panelId, 'judge');
 }
 for (const a of admins) {
-  await insertJudge.run(a.employeeId, a.name, hashPin(pinFor(a)), null, 'admin');
+  await insertJudge.run(String(a.employeeId).trim().toUpperCase(), a.name, hashPin(pinFor(a)), null, 'admin');
 }
 
 console.log(`\nSeeded "${competitionName}" into ${dbLabel}:`, JSON.stringify({

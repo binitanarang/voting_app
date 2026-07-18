@@ -97,8 +97,8 @@ export async function flushQueue() {
 export async function saveScore(entryId, criterionId, score) {
   const url = apiUrl(`/api/scores/${entryId}`);
   try {
-    const res = await request(url, { method: 'PUT', body: { [criterionId]: score } });
-    return { status: 'saved', ballot: res.ballot };
+    await request(url, { method: 'PUT', body: { [criterionId]: score } });
+    return { status: 'saved' };
   } catch (err) {
     if (err.status === 0) {
       const q = readQueue();

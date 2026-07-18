@@ -38,7 +38,9 @@ export default function ScoreEntry() {
     requestCountRef.current += 1;
     const currentRequest = requestCountRef.current;
 
-    // Optimistic update; server response (or the queue) reconciles.
+    // Optimistic update is the source of truth while on this page; concurrent
+    // saves mean per-save server snapshots can be stale, so never apply them.
+    // Reconciliation happens via the ballot refetch on page load.
     setBallot((b) => ({
       ...b,
       entries: b.entries.map((e) =>
@@ -56,7 +58,6 @@ export default function ScoreEntry() {
     try {
       const res = await saveScore(entryId, criterionId, score);
       if (currentRequest === requestCountRef.current && mountedRef.current) {
-        if (res.ballot) setBallot(res.ballot);
         setSaveState(res.status);
       }
     } catch (err) {

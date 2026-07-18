@@ -5,15 +5,19 @@ const SESSION_DAYS = 1;
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 
+/* PINs are case-insensitive: normalized to uppercase before hashing,
+   here and nowhere else, so every caller gets the same canonical form. */
 export function hashPin(pin) {
+  const normalized = String(pin).trim().toUpperCase();
   const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(pin, salt, 32).toString('hex');
+  const hash = crypto.scryptSync(normalized, salt, 32).toString('hex');
   return `${salt}:${hash}`;
 }
 
 export function verifyPin(pin, stored) {
+  const normalized = String(pin).trim().toUpperCase();
   const [salt, hash] = stored.split(':');
-  const candidate = crypto.scryptSync(pin, salt, 32);
+  const candidate = crypto.scryptSync(normalized, salt, 32);
   return crypto.timingSafeEqual(candidate, Buffer.from(hash, 'hex'));
 }
 
@@ -91,7 +95,7 @@ const sessionCookie = (ctx, token) =>
 
 export const handleLogin = asyncHandler(async (req, res) => {
   const ctx = req.ctx;
-  const employeeId = String(req.body?.employeeId ?? '').trim();
+  const employeeId = String(req.body?.employeeId ?? '').trim().toUpperCase();
   const pin = String(req.body?.pin ?? '').trim();
   if (!employeeId || !pin || pin.length > 64) {
     return res.status(400).json({ error: 'Employee ID and PIN required' });
